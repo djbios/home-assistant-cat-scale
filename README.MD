@@ -31,19 +31,15 @@ Over time, the sensor adjusts its baseline if the scale remains below the detect
 
 ### Cat Detection
 
-We watch for the weight to exceed (baseline_weight + cat_weight_threshold).
-If the weight stays above that threshold for at least min_presence_time seconds, we confirm the cat is present.
+We watch for the weight to exceed `baseline_weight + cat_weight_threshold`.
+If the weight stays above that threshold for at least `min_presence_time` seconds, we confirm the cat is present.
 We record the peak weight during the cat’s stay.
 
 ### Cat Leaves
 
 Once the weight drops back below the threshold, we finalize the cat’s weight as
-cat_weight
-=
-peak_weight
-−
-baseline_weight
-cat_weight=peak_weight−baseline_weight
+`cat_weight=peak_weight−baseline_weight`
+
 We update the baseline to the new scale reading (assuming the cat has left).
 
 ### Waste Weight
@@ -51,13 +47,13 @@ We update the baseline to the new scale reading (assuming the cat has left).
 We also track the baseline before the cat arrived vs. the new baseline after the cat leaves.
 The difference is the “waste weight,” i.e., how much extra mass ended up in the litter box.
 
-waste_weight=new_baseline−pre_cat_baseline
+`waste_weight=new_baseline−pre_cat_baseline`
 
 ### Detection States
 
-idle – No cat detected, baseline is stable (or being adjusted).
-waiting_for_confirmation – The scale exceeded threshold, waiting to confirm presence.
-cat_present – Cat has been confirmed present.
+- `idle` – No cat detected, baseline is stable (or being adjusted).
+- `waiting_for_confirmation` – The scale exceeded threshold, waiting to confirm presence.
+- `cat_present` – Cat has been confirmed present.
 
 
 ## Hardware
@@ -72,16 +68,8 @@ esphome:
 esp8266:
   board: d1_mini
 
-# Enable logging
-logger:
-  level: DEBUG
-
 # Enable Home Assistant API
 api:
-  password: ""
-
-ota:
-  platform: esphome
   password: ""
 
 wifi:
