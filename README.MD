@@ -11,7 +11,13 @@ cat and the weight of their waste.
 This will allow you to monitor your cat's health and be alerted to any potential issues.
 
 ## Installation
+### Manual
 Copy the `custom_components/cat_scale` folder to your Home Assistant `custom_components` folder.
+
+### HACS
+HACS > Integrations > 3 dots > Custom repositories > URL: `djbios/home-assistant-cat-scale`, Category: Integration > Add > wait > Search "cat scale" > Install
+![HACS](https://s5.ezgif.com/tmp/ezgif-57416353171d8.gif)
+
 ### Dashboard example
 ![qwe](https://api.monosnap.com/file/download?id=MU11IPmUW0Nz5uXpqfQubsFDDYG3Q5)
 
