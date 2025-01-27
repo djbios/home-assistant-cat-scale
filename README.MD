@@ -1,6 +1,7 @@
 # Cat scale integration for Home Assistant
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/djbios)
-![CI](https://github.com/github/docs/actions/workflows/tests.yml/badge.svg)
+![CI](https://github.com/djbios/home-assistant-cat-scale/actions/workflows/tests.yml/badge.svg)
+
 Using simple weight sensors installed under the litterbox, this integration will provide you with the weight of your 
 cat and the weight of their waste. 
 This will allow you to monitor your cat's health and be alerted to any potential issues.
