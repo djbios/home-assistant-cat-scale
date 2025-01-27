@@ -2,7 +2,7 @@
   "domain": "cat_scale",
   "name": "Cat weight sensor",
   "version": "1.0.0",
-  "documentation": "https://djbios.org",
+  "documentation": "https://github.com/djbios/home-assistant-cat-scale",
   "requirements": [],
   "dependencies": [],
   "codeowners": []

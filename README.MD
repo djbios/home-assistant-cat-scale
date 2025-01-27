@@ -1,5 +1,6 @@
 # Cat scale integration for Home Assistant
-
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/djbios)
+![CI](https://github.com/github/docs/actions/workflows/tests.yml/badge.svg)
 Using simple weight sensors installed under the litterbox, this integration will provide you with the weight of your 
 cat and the weight of their waste. 
 This will allow you to monitor your cat's health and be alerted to any potential issues.
@@ -56,3 +57,54 @@ waste_weight=new_baseline−pre_cat_baseline
 idle – No cat detected, baseline is stable (or being adjusted).
 waiting_for_confirmation – The scale exceeded threshold, waiting to confirm presence.
 cat_present – Cat has been confirmed present.
+
+
+## Hardware
+Basically, all you need is a weight sensor under the litterbox and a microcontroller to read the sensor and send the data to Home Assistant.
+The simplest way to do this is to use an HX711 amplifier and a load cell/cells connected to an ESP8266/ESP32 microcontroller via ESPHome.
+Here is an example of the ESPHome configuration:
+
+```yaml
+esphome:
+  name: litterbox
+
+esp8266:
+  board: d1_mini
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  password: ""
+
+ota:
+  platform: esphome
+  password: ""
+
+wifi:
+  ssid: "MyWIFI"
+  password: "123qweasdzxc"
+
+sensor:
+  - platform: hx711
+    name: "Cat Weight Sensor"
+    dout_pin: D1
+    clk_pin: D3
+    gain: 128
+    update_interval: 2s
+    filters:
+      - calibrate_linear:
+          - 212999 -> 0
+          - 269866 -> 2100
+          - 413236 -> 7800
+      
+      - clamp:
+          min_value: 0
+          max_value: 100000
+          ignore_out_of_range: true
+```
+Don't forget to adjust the calibration values for your sensor, details can be found in the [ESPHome documentation](https://esphome.io/components/sensor/hx711.html).
+
+
