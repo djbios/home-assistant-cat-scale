@@ -1,0 +1,9 @@
+{
+  "domain": "cat_scale",
+  "name": "Cat weight sensor",
+  "version": "1.0.0",
+  "documentation": "https://djbios.org",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": []
+}
