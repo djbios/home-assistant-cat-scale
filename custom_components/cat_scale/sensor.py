@@ -96,6 +96,7 @@ class CatLitterDetectionSensor(SensorEntity):
         self._hass = hass
         self._name = name
         self._source_entity = source_entity
+        self._attr_unique_id = f"{name}_{source_entity}"
 
         # Configurable parameters
         self._threshold = cat_weight_threshold
@@ -119,9 +120,6 @@ class CatLitterDetectionSensor(SensorEntity):
 
         # Baseline weight. Updated when returning to IDLE or first above threshold, etc.
         self._baseline_weight = None
-
-        # We also track the baseline prior to cat arrival, so we can detect "waste weight"
-        self._pre_cat_baseline = None
         self._waste_weight = 0.0
 
         # Store unsubscribe function for the event listener
