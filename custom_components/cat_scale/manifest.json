@@ -1,11 +1,12 @@
 {
   "domain": "cat_scale",
-  "name": "Cat weight sensor",
+  "name": "Cat weight tracker",
   "version": "1.0.0",
   "documentation": "https://github.com/djbios/home-assistant-cat-scale",
   "requirements": [],
   "dependencies": [],
   "codeowners": ["djbios"],
   "integration_type": "device",
-  "iot_class": "calculated"
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/djbios/home-assistant-cat-scale/issues"
 }

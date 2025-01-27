@@ -3,7 +3,7 @@
 
 ![CI](https://github.com/djbios/home-assistant-cat-scale/actions/workflows/tests.yml/badge.svg)
 
-<img src="https://pic.djbios.org/gazjds.webp" alt="drawing" width="400"/>
+<img src="https://pic.djbios.org/r3qe8x.png" alt="drawing" width="400"/>
 
 
 Using simple weight sensors installed under the litterbox, this integration will provide you with the weight of your 
