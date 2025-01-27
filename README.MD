@@ -12,6 +12,8 @@ This will allow you to monitor your cat's health and be alerted to any potential
 
 ## Installation
 Copy the `custom_components/cat_scale` folder to your Home Assistant `custom_components` folder.
+### Dashboard example
+![qwe](https://api.monosnap.com/file/download?id=MU11IPmUW0Nz5uXpqfQubsFDDYG3Q5)
 
 ## Configuration
 This is the example configuration for the cat scale integration: 
