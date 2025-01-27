@@ -5,5 +5,5 @@
   "documentation": "https://github.com/djbios/home-assistant-cat-scale",
   "requirements": [],
   "dependencies": [],
-  "codeowners": []
+  "codeowners": ["djbios"]
 }
