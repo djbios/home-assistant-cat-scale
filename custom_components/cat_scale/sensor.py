@@ -20,13 +20,12 @@ CONF_SOURCE_SENSOR = "source_sensor"
 CONF_CAT_WEIGHT_THRESHOLD = "cat_weight_threshold"
 CONF_MIN_PRESENCE_TIME = "min_presence_time"
 CONF_LEAVE_TIMEOUT = "leave_timeout"
-CONF_BASELINE_LOOKBACK = "baseline_lookback"
 
+# We'll remove baseline_lookback since we're no longer averaging historical data.
 DEFAULT_NAME = "Cat Litter Detected Weight"
-DEFAULT_CAT_WEIGHT_THRESHOLD = 1000
+DEFAULT_CAT_WEIGHT_THRESHOLD = 700
 DEFAULT_MIN_PRESENCE_TIME = 2
 DEFAULT_LEAVE_TIMEOUT = 30
-DEFAULT_BASELINE_LOOKBACK = 10
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_SOURCE_SENSOR): cv.entity_id,
@@ -34,7 +33,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_CAT_WEIGHT_THRESHOLD, default=DEFAULT_CAT_WEIGHT_THRESHOLD): cv.positive_int,
     vol.Optional(CONF_MIN_PRESENCE_TIME, default=DEFAULT_MIN_PRESENCE_TIME): cv.positive_int,
     vol.Optional(CONF_LEAVE_TIMEOUT, default=DEFAULT_LEAVE_TIMEOUT): cv.positive_int,
-    vol.Optional(CONF_BASELINE_LOOKBACK, default=DEFAULT_BASELINE_LOOKBACK): cv.positive_int,
 })
 
 
@@ -45,7 +43,6 @@ async def async_setup_platform(hass: HomeAssistant, config, async_add_entities, 
     cat_weight_threshold = config[CONF_CAT_WEIGHT_THRESHOLD]
     min_presence_time = config[CONF_MIN_PRESENCE_TIME]
     leave_timeout = config[CONF_LEAVE_TIMEOUT]
-    baseline_lookback = config[CONF_BASELINE_LOOKBACK]
 
     entity = CatLitterDetectionSensor(
         hass=hass,
@@ -53,8 +50,7 @@ async def async_setup_platform(hass: HomeAssistant, config, async_add_entities, 
         source_entity=source_sensor,
         cat_weight_threshold=cat_weight_threshold,
         min_presence_time=min_presence_time,
-        leave_timeout=leave_timeout,
-        baseline_lookback=baseline_lookback
+        leave_timeout=leave_timeout
     )
     async_add_entities([entity])
 
@@ -69,7 +65,7 @@ class DetectionState:
 class CatLitterDetectionSensor(SensorEntity):
     """
     Sensor that detects the presence of a cat on a litter scale and computes
-    the cat's weight as (peak - baseline).
+    the cat's weight as (peak_weight - baseline_weight).
     """
 
     def __init__(
@@ -79,8 +75,7 @@ class CatLitterDetectionSensor(SensorEntity):
         source_entity,
         cat_weight_threshold,
         min_presence_time,
-        leave_timeout,
-        baseline_lookback
+        leave_timeout
     ):
         """Initialize the cat litter detection sensor."""
         self._hass = hass
@@ -91,12 +86,12 @@ class CatLitterDetectionSensor(SensorEntity):
         self._threshold = cat_weight_threshold
         self._min_presence_time = timedelta(seconds=min_presence_time)
         self._leave_timeout = timedelta(seconds=leave_timeout)
-        self._baseline_lookback = timedelta(seconds=baseline_lookback)
 
-        # For storing scale readings: we keep (timestamp, weight)
+        # Keep recent readings, mostly for debugging or if you need them later
+        # Format: deque of (timestamp, weight)
         self._recent_readings = deque()
 
-        # Final state we report: last successfully detected cat weight
+        # Final reported state: last successfully detected cat weight
         self._state = None
 
         # Detection state machine
@@ -106,6 +101,11 @@ class CatLitterDetectionSensor(SensorEntity):
         self._cat_arrived_time = None
         self._cat_confirmed_time = None
         self._peak_weight = None
+
+        # The main difference:
+        # We store the "baseline_weight" from the first reading above threshold
+        # (and update it whenever we return to IDLE).
+        self._baseline_weight = None
 
         # Store unsubscribe function for the event listener
         self._unsub_listener = None
@@ -117,18 +117,6 @@ class CatLitterDetectionSensor(SensorEntity):
         self._unsub_listener = async_track_state_change_event(
             self._hass, [self._source_entity], self._handle_source_sensor_state_event
         )
-
-        # Initialize from current state if available
-        init_state = self._hass.states.get(self._source_entity)
-        if init_state and init_state.state not in [STATE_UNKNOWN, STATE_UNAVAILABLE]:
-            try:
-                initial_value = float(init_state.state)
-                # Use last_changed from that state if possible, else fallback
-                init_time = init_state.last_changed or init_state.last_updated
-                self._add_reading(initial_value, init_time)
-                _LOGGER.debug("Initial reading for %s: weight=%.2f at %s", self._source_entity, initial_value, init_time)
-            except ValueError:
-                _LOGGER.debug("Initial state for %s is non-numeric; ignoring.", self._source_entity)
 
     async def async_will_remove_from_hass(self):
         """Clean up when entity is removed."""
@@ -145,7 +133,6 @@ class CatLitterDetectionSensor(SensorEntity):
             _LOGGER.debug("%s: No new_state in event", self._name)
             return
 
-        # Skip if unknown or unavailable
         if new_state.state in [STATE_UNKNOWN, STATE_UNAVAILABLE]:
             _LOGGER.debug("%s: State is unknown/unavailable (%s). Ignoring.", self._name, new_state.state)
             return
@@ -171,13 +158,10 @@ class CatLitterDetectionSensor(SensorEntity):
     def _add_reading(self, weight: float, reading_time) -> None:
         """Add a new reading (weight) with a timestamp, and prune old data."""
         _LOGGER.debug("%s: Adding reading -> weight=%.2f, time=%s", self._name, weight, reading_time)
-
         self._recent_readings.append((reading_time, weight))
 
-        # Prune anything older than the maximum we ever need
-        # (baseline_lookback + some buffer).
-        # In this example, let's keep 2 * baseline_lookback just to be safe.
-        max_keep = self._baseline_lookback * 2
+        # For example, keep up to 5 minutes of data for debugging
+        max_keep = timedelta(minutes=2)
         oldest_allowed = reading_time - max_keep
 
         while self._recent_readings and self._recent_readings[0][0] < oldest_allowed:
@@ -187,21 +171,36 @@ class CatLitterDetectionSensor(SensorEntity):
     def _evaluate_detection(self, current_weight: float, event_time) -> None:
         """Core logic to track cat presence and finalize cat weight if needed."""
         _LOGGER.debug(
-            "%s: Evaluating detection. State=%s, current_weight=%.2f, event_time=%s",
-            self._name, self._detection_state, current_weight, event_time
+            "%s: Evaluating detection. State=%s, current_weight=%.2f, baseline=%.2f",
+            self._name, self._detection_state, current_weight, self._baseline_weight
         )
 
+        if self._baseline_weight is None:
+            self._baseline_weight = current_weight
+            _LOGGER.debug(
+                "%s: First reading above threshold. Setting baseline to %.2f",
+                self._name, self._baseline_weight
+            )
+            return
+
         if self._detection_state == DetectionState.IDLE:
-            if current_weight >= self._threshold:
+            # If weight is above threshold, start waiting for confirmation
+            if current_weight >= self._threshold + self._baseline_weight:
                 self._cat_arrived_time = event_time
                 self._detection_state = DetectionState.WAITING_FOR_CONFIRMATION
-                _LOGGER.debug("%s: Transition to WAITING_FOR_CONFIRMATION at %s", self._name, event_time)
+                _LOGGER.debug(
+                    "%s: Transition to WAITING_FOR_CONFIRMATION at %s. baseline_weight=%.2f",
+                    self._name, event_time, self._baseline_weight
+                )
+            else:
+                # Update baseline if needed
+                self._baseline_weight = sum([r[1] for r in self._recent_readings]) / len(self._recent_readings)
 
         elif self._detection_state == DetectionState.WAITING_FOR_CONFIRMATION:
             # Check if weight is still above threshold
             if current_weight >= self._threshold:
-                # If time above threshold >= min_presence_time, confirm cat presence
                 if (event_time - self._cat_arrived_time) >= self._min_presence_time:
+                    # Confirm cat presence
                     self._cat_confirmed_time = event_time
                     self._peak_weight = current_weight
                     self._detection_state = DetectionState.CAT_PRESENT
@@ -210,74 +209,60 @@ class CatLitterDetectionSensor(SensorEntity):
                         self._name, self._peak_weight, event_time
                     )
             else:
-                # Weight dropped below threshold before confirming, revert to idle
-                _LOGGER.debug("%s: Weight dropped below threshold before confirmation. Reset to IDLE.", self._name)
+                # Weight dropped below threshold before confirmation:
+                # revert to IDLE and update baseline
+                _LOGGER.debug(
+                    "%s: Weight dropped below threshold (%.2f < %.2f) before confirmation. "
+                    "Reset to IDLE, baseline updated to %.2f.",
+                    self._name, current_weight, self._threshold, current_weight
+                )
                 self._detection_state = DetectionState.IDLE
+                self._baseline_weight = current_weight
 
         elif self._detection_state == DetectionState.CAT_PRESENT:
-            # Update peak weight
-            if current_weight >= self._threshold:
-                # Cat still present, update peak if higher
+            if current_weight >= self._threshold + self._baseline_weight:
+                # Cat still present: update peak if needed
                 if current_weight > self._peak_weight:
                     _LOGGER.debug(
-                        "%s: Updating peak weight from %.2f to %.2f.",
+                        "%s: Updating peak weight from %.2f to %.2f",
                         self._name, self._peak_weight, current_weight
                     )
                 self._peak_weight = max(self._peak_weight, current_weight)
 
-                # Check if we've exceeded the leave_timeout
+                # Check if we've exceeded leave_timeout
                 if (event_time - self._cat_confirmed_time) > self._leave_timeout:
                     _LOGGER.debug(
-                        "%s: Cat presence took too long (%s). Discarding event. Reset to IDLE.",
-                        self._name, self._leave_timeout
+                        "%s: Cat presence took too long (%s). Discarding event, baseline updated to %.2f",
+                        self._name, self._leave_timeout, current_weight
                     )
                     self._detection_state = DetectionState.IDLE
+                    # Update baseline here as well, since we discard
+                    self._baseline_weight = current_weight
+                    self._recent_readings.clear()
             else:
-                # Cat has left: finalize cat weight
-                baseline_val = self._compute_baseline(self._cat_arrived_time)
-                if baseline_val is not None and self._peak_weight is not None:
-                    detected_cat_weight = self._peak_weight - baseline_val
-                    if detected_cat_weight < 0:
-                        _LOGGER.debug(
-                            "%s: Negative cat weight (%.2f). Setting to 0. Possibly sensor drift/noise.",
-                            self._name, detected_cat_weight
-                        )
-                        detected_cat_weight = 0
-                    self._state = round(detected_cat_weight, 2)
+                # Cat left: finalize cat weight
+                detected_cat_weight = self._peak_weight - self._baseline_weight
+                if detected_cat_weight < 0:
                     _LOGGER.debug(
-                        "%s: Cat event recognized. baseline=%.2f, peak=%.2f, final=%.2f",
-                        self._name, baseline_val, self._peak_weight, self._state
+                        "%s: Negative cat weight (%.2f). Forcing to 0. Possibly sensor drift/noise.",
+                        self._name, detected_cat_weight
                     )
-                else:
-                    _LOGGER.debug(
-                        "%s: Baseline or peak not found. baseline=%s, peak=%s. No update to state.",
-                        self._name, baseline_val, self._peak_weight
-                    )
+                    detected_cat_weight = 0
 
+                self._state = round(detected_cat_weight, 2)
+                _LOGGER.debug(
+                    "%s: Cat event recognized. baseline=%.2f, peak=%.2f, final=%.2f",
+                    self._name, self._baseline_weight, self._peak_weight, self._state
+                )
+
+                # Return to IDLE, update baseline to the new reading
                 self._detection_state = DetectionState.IDLE
-                _LOGGER.debug("%s: Transitioning back to IDLE after cat left.", self._name)
-
-    def _compute_baseline(self, arrival_time) -> float | None:
-        """
-        Compute baseline as the average of readings in the period
-        [arrival_time - baseline_lookback, arrival_time).
-        """
-        start_time = arrival_time - self._baseline_lookback
-        relevant_readings = [
-            w for (t, w) in self._recent_readings
-            if start_time <= t < arrival_time
-        ]
-        _LOGGER.debug(
-            "%s: Computing baseline from %d relevant readings in [%s, %s).",
-            self._name, len(relevant_readings), start_time, arrival_time
-        )
-        if not relevant_readings:
-            _LOGGER.debug("%s: No relevant readings to compute baseline.", self._name)
-            return None
-
-        baseline = sum(relevant_readings) / len(relevant_readings)
-        _LOGGER.debug("%s: Baseline=%.2f from %d readings.", self._name, baseline, len(relevant_readings))
-        return baseline
+                self._baseline_weight = current_weight
+                _LOGGER.debug(
+                    "%s: Transitioning back to IDLE after cat left. New baseline=%.2f",
+                    self._name, self._baseline_weight
+                )
+                self._recent_readings.clear()
 
     @property
     def name(self):
