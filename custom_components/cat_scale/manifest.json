@@ -5,5 +5,7 @@
   "documentation": "https://github.com/djbios/home-assistant-cat-scale",
   "requirements": [],
   "dependencies": [],
-  "codeowners": ["djbios"]
+  "codeowners": ["djbios"],
+  "integration_type": "device",
+  "iot_class": "calculated"
 }
