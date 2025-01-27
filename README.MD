@@ -41,17 +41,13 @@ We record the peak weight during the cat’s stay.
 
 ### Cat Leaves
 
-Once the weight drops back below the threshold, we finalize the cat’s weight as
-`cat_weight=peak_weight−baseline_weight`
-
-We update the baseline to the new scale reading (assuming the cat has left).
+Once the weight drops back below the threshold, we finalize the cat’s weight as `cat_weight=peak_weight−baseline_weight`
+we update the baseline to the new scale reading (assuming the cat has left).
 
 ### Waste Weight
 
 We also track the baseline before the cat arrived vs. the new baseline after the cat leaves.
-The difference is the “waste weight,” i.e., how much extra mass ended up in the litter box.
-
-`waste_weight=new_baseline−pre_cat_baseline`
+The difference is the “waste weight,” i.e., how much extra mass ended up in the litter box `waste_weight=new_baseline−pre_cat_baseline`
 
 ### Detection States
 
