@@ -53,16 +53,18 @@ async def async_setup_platform(hass: HomeAssistant, config, async_add_entities, 
         leave_timeout=leave_timeout
     )
 
-    # Create the extra sensors for baseline and detection state
+    # Create the extra sensors for baseline, detection state, and waste weight
     baseline_sensor = CatLitterBaselineSensor(main_sensor)
     detection_state_sensor = CatLitterDetectionStateSensor(main_sensor)
+    waste_sensor = CatLitterWasteSensor(main_sensor)
 
-    # Let the main sensor know about the sub-sensors so it can update them
+    # Let the main sensor know about the sub-sensors
     main_sensor.register_sub_sensor(baseline_sensor)
     main_sensor.register_sub_sensor(detection_state_sensor)
+    main_sensor.register_sub_sensor(waste_sensor)
 
-    # Add all three entities to Home Assistant
-    async_add_entities([main_sensor, baseline_sensor, detection_state_sensor])
+    # Add all entities to Home Assistant
+    async_add_entities([main_sensor, baseline_sensor, detection_state_sensor, waste_sensor])
 
 
 class DetectionState:
@@ -76,6 +78,9 @@ class CatLitterDetectionSensor(SensorEntity):
     """
     Main sensor that detects the presence of a cat on a litter scale
     and computes the cat's weight as (peak_weight - baseline_weight).
+
+    Also tracks 'waste weight' by comparing new baseline after cat leaves
+    to the baseline before the cat arrived.
     """
 
     def __init__(
@@ -115,10 +120,14 @@ class CatLitterDetectionSensor(SensorEntity):
         # Baseline weight. Updated when returning to IDLE or first above threshold, etc.
         self._baseline_weight = None
 
+        # We also track the baseline prior to cat arrival, so we can detect "waste weight"
+        self._pre_cat_baseline = None
+        self._waste_weight = 0.0
+
         # Store unsubscribe function for the event listener
         self._unsub_listener = None
 
-        # Sub-sensors for baseline and detection state
+        # Sub-sensors for baseline, detection state, waste, etc.
         self._sub_sensors = []
 
     def register_sub_sensor(self, sensor_entity: SensorEntity):
@@ -202,7 +211,6 @@ class CatLitterDetectionSensor(SensorEntity):
             return
 
         # Threshold is baseline + cat_weight_threshold
-        # i.e. we treat baseline as the stable "empty-litter" weight
         trigger_level = self._baseline_weight + self._threshold
 
         _LOGGER.debug(
@@ -211,7 +219,7 @@ class CatLitterDetectionSensor(SensorEntity):
         )
 
         if self._detection_state == DetectionState.IDLE:
-            # If weight is above the (baseline + threshold), start waiting
+            # If weight is above (baseline + threshold), start waiting
             if current_weight >= trigger_level:
                 self._cat_arrived_time = event_time
                 self._detection_state = DetectionState.WAITING_FOR_CONFIRMATION
@@ -220,10 +228,7 @@ class CatLitterDetectionSensor(SensorEntity):
                     self._name, event_time, self._baseline_weight
                 )
             else:
-                # Keep adjusting baseline if the box is presumably empty
-                # Here, for example, you might do a slow approach,
-                # or just average the queue.
-                # Shown here: simple average of all recent readings.
+                # If presumably empty, we can adjust the baseline slowly or with a simple average
                 if self._recent_readings:
                     avg = sum(r[1] for r in self._recent_readings) / len(self._recent_readings)
                     self._baseline_weight = avg
@@ -245,12 +250,14 @@ class CatLitterDetectionSensor(SensorEntity):
             else:
                 # Weight fell back below threshold, so reset
                 _LOGGER.debug(
-                    "%s: Weight dropped below trigger (%.2f < %.2f) before confirmation. "
-                    "Reset to IDLE. baseline -> %.2f",
+                    "%s: Weight dropped below trigger (%.2f < %.2f) before confirmation. Reset to IDLE. "
+                    "baseline -> %.2f",
                     self._name, current_weight, trigger_level, current_weight
                 )
                 self._detection_state = DetectionState.IDLE
                 self._baseline_weight = current_weight
+                self._recent_readings.clear()
+
 
         elif self._detection_state == DetectionState.CAT_PRESENT:
             if current_weight >= trigger_level:
@@ -287,13 +294,24 @@ class CatLitterDetectionSensor(SensorEntity):
                     self._name, self._baseline_weight, self._peak_weight, self._state
                 )
 
+                # Now compute "waste weight" based on how the baseline changes
+                old_baseline = self._baseline_weight
                 # Return to IDLE, update baseline to the new reading
+                # TODO might be not accurate: need to wait for a new baseline to be established
                 self._detection_state = DetectionState.IDLE
                 self._baseline_weight = current_weight
                 self._recent_readings.clear()
                 _LOGGER.debug(
                     "%s: Transitioning back to IDLE. New baseline=%.2f",
                     self._name, self._baseline_weight
+                )
+
+                new_baseline = self._baseline_weight
+                # The difference: how the baseline changed after the cat's visit
+                self._waste_weight = round(new_baseline - old_baseline, 2)
+                _LOGGER.debug(
+                    "%s: Waste weight computed: new_baseline=%.2f - pre_cat_baseline=%.2f = %.2f",
+                    self._name, new_baseline, old_baseline, self._waste_weight
                 )
 
     @property
@@ -321,21 +339,27 @@ class CatLitterDetectionSensor(SensorEntity):
         return "g"
 
     @property
-    def baseline_weight(self):
+    def baseline_weight(self) -> float | None:
         """Expose the baseline weight for sub-sensors to use."""
         return self._baseline_weight
 
     @property
-    def detection_state(self):
+    def detection_state(self) -> str:
         """Expose the internal detection state for sub-sensors to use."""
         return self._detection_state
 
     @property
+    def waste_weight(self) -> float:
+        """
+        The difference in baseline before cat arrived vs. after cat left.
+        A positive value indicates more mass in the box (i.e. "waste").
+        Negative might indicate litter was removed or scattered.
+        """
+        return self._waste_weight
+
+    @property
     def should_poll(self) -> bool:
-        """
-        This sensor pushes updates from events.
-        No polling needed for the main sensor itself.
-        """
+        """Event-driven; no polling."""
         return False
 
 
@@ -405,4 +429,41 @@ class CatLitterDetectionStateSensor(SensorEntity):
     @property
     def should_poll(self) -> bool:
         """No need to poll—this updates when the main sensor updates."""
+        return False
+
+
+class CatLitterWasteSensor(SensorEntity):
+    """
+    A secondary sensor entity that shows the 'waste weight', i.e.
+    the difference in the litter box baseline before vs. after cat visits.
+    """
+
+    def __init__(self, main_sensor: CatLitterDetectionSensor):
+        """Initialize the waste sensor."""
+        self._main_sensor = main_sensor
+
+    @property
+    def name(self):
+        return f"{self._main_sensor.name} Waste Weight"
+
+    @property
+    def state(self):
+        """
+        Return the difference between the post-visit baseline
+        and the pre-visit baseline (in grams).
+        """
+        return self._main_sensor.waste_weight
+
+    @property
+    def icon(self):
+        return "mdi:delete-variant"
+
+    @property
+    def unit_of_measurement(self):
+        """Same unit as the main sensor (grams)."""
+        return "g"
+
+    @property
+    def should_poll(self) -> bool:
+        """No polling; event-driven from main sensor."""
         return False
