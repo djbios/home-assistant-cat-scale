@@ -189,9 +189,7 @@ class CatLitterDetectionSensor(SensorEntity):
         """Add a new reading (weight) with a timestamp, and prune old data."""
         _LOGGER.debug("%s: Adding reading -> weight=%.2f, time=%s", self._name, weight, reading_time)
         self._recent_readings.append((reading_time, weight))
-
-        # For example, keep up to 2 minutes of data for debugging
-        max_keep = timedelta(minutes=2)
+        max_keep = timedelta(minutes=5)
         oldest_allowed = reading_time - max_keep
 
         while self._recent_readings and self._recent_readings[0][0] < oldest_allowed:
