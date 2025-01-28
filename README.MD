@@ -16,10 +16,10 @@ Copy the `custom_components/cat_scale` folder to your Home Assistant `custom_com
 
 ### HACS
 HACS > Integrations > 3 dots > Custom repositories > URL: `djbios/home-assistant-cat-scale`, Category: Integration > Add > wait > Search "cat scale" > Install
-![HACS](https://s5.ezgif.com/tmp/ezgif-57416353171d8.gif)
+![HACS](https://pic.djbios.org/yjf622.gif)
 
 ### Dashboard example
-![qwe](https://d3dehtdmp2rwcw.cloudfront.net/ms_683135/4TulQKCE65i8ZlDeLq5mDTUinaK6x4/Monosnap%2BMonosnap%2B2025-01-27%2B19-23-55.png?Expires=1738006200&Signature=jbwVFDCGAUrDOu4fVZ11anKNt8jqWdlH5aMgiaCoDps4BSJ51rf8MNarNHmj5e~Fk4ebPhFsiVj1AkynDYHiHc4oSrgDijwjBhXnvdOhmmAn0CvkcrMVGOOsxge05hRFUltV5dEOZ-eXVDmLSZJpYshbPJJ6IgDN97MgrTUAEK-QZ595QuTrmgNLbr6A7GLzvDBcRzT6F9xvZNOeSDS4na6JbhHltJ~pslSuwvt3njnSAtprvJ9vB9~nR6srxg1~ULkAmGJeBpu8V6BC5VWiWaySUl7M6U~zKJxRWutiE7D8nFS-EFyzhRB5nzSfxZcuhkDaX9yYb0v0QzkWxi1bkw__&Key-Pair-Id=APKAJBCGYQYURKHBGCOA)
+![qwe](https://pic.djbios.org/ijo4jd.png)
 
 ## Configuration
 This is the example configuration for the cat scale integration: 
