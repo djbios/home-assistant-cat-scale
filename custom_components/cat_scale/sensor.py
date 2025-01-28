@@ -1,4 +1,5 @@
 import logging
+import statistics
 from collections import deque
 from datetime import timedelta
 
@@ -228,8 +229,8 @@ class CatLitterDetectionSensor(SensorEntity):
             else:
                 # If presumably empty, we can adjust the baseline slowly or with a simple average
                 if self._recent_readings:
-                    avg = sum(r[1] for r in self._recent_readings) / len(self._recent_readings)
-                    self._baseline_weight = avg
+                    median = statistics.median(r[1] for r in self._recent_readings)
+                    self._baseline_weight = median
                     _LOGGER.debug(
                         "%s: Updated baseline to average of recent: %.2f", self._name, self._baseline_weight
                     )
