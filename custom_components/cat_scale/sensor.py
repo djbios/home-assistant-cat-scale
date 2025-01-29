@@ -305,7 +305,7 @@ class CatLitterDetectionSensor(SensorEntity):
 
                 new_baseline = self._baseline_weight
                 # The difference: how the baseline changed after the cat's visit
-                self._waste_weight = min(0., round(new_baseline - old_baseline, 2))
+                self._waste_weight = max(0., round(new_baseline - old_baseline, 2))
                 _LOGGER.debug(
                     "%s: Waste weight computed: new_baseline=%.2f - pre_cat_baseline=%.2f = %.2f",
                     self._name, new_baseline, old_baseline, self._waste_weight
