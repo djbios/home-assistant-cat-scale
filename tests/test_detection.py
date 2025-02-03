@@ -7,20 +7,18 @@ import random
 from datetime import datetime, timedelta
 
 
-from custom_components.cat_scale.sensor import (
-    CatLitterDetectionSensor,
-    DetectionState
-)
+from custom_components.cat_scale.sensor import CatLitterDetectionSensor, DetectionState
 
 TESTS_TOLERANCE = 10
 
+
 def generate_series(
-        start_time: datetime,
-        steps: int,
-        base_weight: float,
-        noise: float = 0.0,
-        event_profile=None,
-        time_step_sec: int = 1
+    start_time: datetime,
+    steps: int,
+    base_weight: float,
+    noise: float = 0.0,
+    event_profile=None,
+    time_step_sec: int = 1,
 ):
     """
     A generator function that yields (timestamp, weight).
@@ -62,6 +60,7 @@ def feed_readings_to_sensor(sensor, readings):
         new_state.last_changed = timestamp
         event.time_fired = timestamp
     """
+
     # We'll define a minimal event-like object
     class FakeState:
         def __init__(self, s, t):
@@ -75,7 +74,7 @@ def feed_readings_to_sensor(sensor, readings):
             self.data = {"new_state": new_state}
             self.time_fired = time_fired
 
-    for (ts, w) in readings:
+    for ts, w in readings:
         fstate = FakeState(str(w), ts)
         fevent = FakeEvent(fstate, ts)
         sensor._handle_source_sensor_state_event(fevent)
@@ -88,6 +87,7 @@ def make_sensor(hass):
     We pass in a "hass" fixture to mimic HA environment if needed,
     or you can just pass None if you're not using real HA objects in your tests.
     """
+
     async def _make(name="Test Cat Sensor", threshold=700, min_time=2, leave_time=30):
         sensor = CatLitterDetectionSensor(
             hass=hass,
@@ -95,7 +95,7 @@ def make_sensor(hass):
             source_entity="sensor.test_scale",
             cat_weight_threshold=threshold,
             min_presence_time=min_time,
-            leave_timeout=leave_time
+            leave_timeout=leave_time,
         )
         sensor.hass = hass
         sensor.entity_id = "sensor.test_cat"
@@ -104,7 +104,6 @@ def make_sensor(hass):
         return sensor
 
     return _make
-
 
 
 @pytest.mark.asyncio
@@ -120,7 +119,7 @@ async def test_noisy_baseline_no_events(make_sensor):
         steps=20,
         base_weight=500.0,
         noise=1.0,
-        event_profile=None
+        event_profile=None,
     )
     feed_readings_to_sensor(sensor, readings)
 
@@ -162,7 +161,7 @@ async def test_cat_come_left_same_baseline(make_sensor):
         steps=12,
         base_weight=base_wt,
         noise=0.0,
-        event_profile=event_profile
+        event_profile=event_profile,
     )
     feed_readings_to_sensor(sensor, readings)
 
@@ -174,7 +173,9 @@ async def test_cat_come_left_same_baseline(make_sensor):
 
     assert sensor.state == pytest.approx(expected_cat_weight, 0.1), "Cat weight must be ~60"
     assert sensor.baseline_weight == pytest.approx(base_wt, 0.1), "Baseline should remain near 500"
-    assert sensor.waste_weight == pytest.approx(0.0, 0.01), "Waste should be 0 if baseline didn't shift"
+    assert sensor.waste_weight == pytest.approx(0.0, 0.01), (
+        "Waste should be 0 if baseline didn't shift"
+    )
 
 
 @pytest.mark.asyncio
@@ -199,7 +200,7 @@ async def test_baseline_change_down(make_sensor, hass):
         steps=20,
         base_weight=500.0,
         noise=0.5,
-        event_profile=event_profile
+        event_profile=event_profile,
     )
     feed_readings_to_sensor(sensor, readings)
 
@@ -230,7 +231,7 @@ async def test_baseline_change_up_less_than_cat(make_sensor, hass):
         steps=15,
         base_weight=500.0,
         noise=0,
-        event_profile=event_profile
+        event_profile=event_profile,
     )
     feed_readings_to_sensor(sensor, readings)
 
@@ -266,7 +267,7 @@ async def test_cat_come_left_quickly_no_update(make_sensor, hass):
         steps=10,
         base_weight=500.0,
         noise=0.0,
-        event_profile=event_profile
+        event_profile=event_profile,
     )
     feed_readings_to_sensor(sensor, readings)
 
@@ -300,13 +301,15 @@ async def test_cat_come_waste_left_all_sensors(make_sensor, hass):
         #     return 1
         return 0
 
-    readings = list(generate_series(
-        start_time=start_time,
-        steps=20,
-        base_weight=base_wt,
-        noise=0.0,
-        event_profile=event_profile
-    ))
+    readings = list(
+        generate_series(
+            start_time=start_time,
+            steps=20,
+            base_weight=base_wt,
+            noise=0.0,
+            event_profile=event_profile,
+        )
+    )
     feed_readings_to_sensor(sensor, readings)
 
     # Cat was present from step 2..6 => 5 steps => definitely > min_presence_time=2
@@ -317,4 +320,3 @@ async def test_cat_come_waste_left_all_sensors(make_sensor, hass):
     assert sensor.baseline_weight == pytest.approx(515, 0.1), "Baseline should end near 515"
     assert sensor.waste_weight == pytest.approx(15, 0.1), "Waste weight should be ~15"
     assert sensor._detection_state == DetectionState.IDLE
-
