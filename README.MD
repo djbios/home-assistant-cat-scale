@@ -35,7 +35,7 @@ sensor:
 ```
 Configuration recomendations:
 - `cat_weight_threshold` should be set to the average weight of your cat deducting 20-30%.
-- To set `min_presence_time` use your weight sensor historical data and set it to the average time your cat spends in the litterbox + 10-20%.
+- To set `min_presence_time` use your weight sensor historical data and set it to the average time your cat spends in the litterbox - 10-20%.
 - `leave_timeout` depends on your cat's behavior, if your cat is often in and out of the litterbox, you should set it to a higher value.
 
 ## Algorithm Overview
