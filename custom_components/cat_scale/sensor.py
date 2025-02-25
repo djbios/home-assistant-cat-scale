@@ -80,6 +80,7 @@ class DetectionState:
     IDLE = "idle"
     WAITING_FOR_CONFIRMATION = "waiting_for_confirmation"
     CAT_PRESENT = "cat_present"
+    AFTER_CAT = "after_cat"
 
 
 class CatLitterDetectionSensor(SensorEntity):
@@ -331,27 +332,23 @@ class CatLitterDetectionSensor(SensorEntity):
                     self._state,
                 )
 
-                # Now compute "waste weight" based on how the baseline changes
-                old_baseline = self._baseline_weight
-                # Return to IDLE, update baseline to the new reading
-                # TODO might be not accurate: need to wait for a new baseline to be established
+                self._detection_state = DetectionState.AFTER_CAT
+                self._recent_readings.clear()
+                self._add_reading(current_weight, event_time)
+
+        elif self._detection_state == DetectionState.AFTER_CAT:
+            self._add_reading(current_weight, event_time)
+            stand_dev = statistics.stdev(r[1] for r in self._recent_readings)
+
+            if stand_dev <= 50 and len(self._recent_readings) >= 5:  # TODO magic numbers
                 self._detection_state = DetectionState.IDLE
+                self._waste_weight = current_weight - self._baseline_weight
                 self._baseline_weight = current_weight
                 self._recent_readings.clear()
                 _LOGGER.debug(
-                    "%s: Transitioning back to IDLE. New baseline=%.2f",
+                    "%s: Finished cat event. baseline=%.2f, waste=%.2f",
                     self._name,
-                    self._baseline_weight,
-                )
-
-                new_baseline = self._baseline_weight
-                # The difference: how the baseline changed after the cat's visit
-                self._waste_weight = max(0.0, round(new_baseline - old_baseline, 2))
-                _LOGGER.debug(
-                    "%s: Waste weight computed: new_baseline=%.2f - pre_cat_baseline=%.2f = %.2f",
-                    self._name,
-                    new_baseline,
-                    old_baseline,
+                    current_weight,
                     self._waste_weight,
                 )
 
@@ -444,10 +441,7 @@ class CatLitterBaselineSensor(SensorEntity):
 
 class CatLitterDetectionStateSensor(SensorEntity):
     """
-    A secondary sensor entity that shows the detection state:
-    - idle
-    - waiting_for_confirmation
-    - cat_present
+    A secondary sensor entity that shows the detection state
     """
 
     def __init__(self, main_sensor: CatLitterDetectionSensor):
