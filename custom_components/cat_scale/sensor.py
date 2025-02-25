@@ -342,7 +342,7 @@ class CatLitterDetectionSensor(SensorEntity):
 
             if stand_dev <= 50 and len(self._recent_readings) >= 5:  # TODO magic numbers
                 self._detection_state = DetectionState.IDLE
-                self._waste_weight = current_weight - self._baseline_weight
+                self._waste_weight = max(current_weight - self._baseline_weight, 0)
                 self._baseline_weight = current_weight
                 self._recent_readings.clear()
                 _LOGGER.debug(
