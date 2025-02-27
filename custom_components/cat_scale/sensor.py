@@ -27,6 +27,8 @@ DEFAULT_CAT_WEIGHT_THRESHOLD = 1000
 DEFAULT_MIN_PRESENCE_TIME = 4
 DEFAULT_LEAVE_TIMEOUT = 120
 
+AFTER_CAT_STANDARD_DEVIATION = 50
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_SOURCE_SENSOR): cv.entity_id,
@@ -125,7 +127,7 @@ class CatLitterDetectionSensor(SensorEntity):
         # Timestamps and values for detection logic
         self._cat_arrived_time = None
         self._cat_confirmed_time = None
-        self._peak_weight = None
+        self._peak_weight = 0
 
         # Baseline weight. Updated when returning to IDLE or first above threshold, etc.
         self._baseline_weight = None
@@ -265,6 +267,7 @@ class CatLitterDetectionSensor(SensorEntity):
 
         elif self._detection_state == DetectionState.WAITING_FOR_CONFIRMATION:
             if current_weight >= trigger_level:
+                self._peak_weight = max(self._peak_weight, current_weight)
                 # If we have stayed above threshold long enough, confirm cat
                 if (event_time - self._cat_arrived_time) >= self._min_presence_time:
                     self._cat_confirmed_time = event_time
@@ -289,17 +292,11 @@ class CatLitterDetectionSensor(SensorEntity):
                 self._detection_state = DetectionState.IDLE
                 self._baseline_weight = current_weight
                 self._recent_readings.clear()
+                self._peak_weight = 0
 
         elif self._detection_state == DetectionState.CAT_PRESENT:
             if current_weight >= trigger_level:
                 # Cat still present: update peak if needed
-                if current_weight > self._peak_weight:
-                    _LOGGER.debug(
-                        "%s: Updating peak weight from %.2f to %.2f",
-                        self._name,
-                        self._peak_weight,
-                        current_weight,
-                    )
                 self._peak_weight = max(self._peak_weight, current_weight)
 
                 # Check if we've exceeded leave_timeout
@@ -315,6 +312,7 @@ class CatLitterDetectionSensor(SensorEntity):
             else:
                 # Cat left: finalize cat weight
                 detected_cat_weight = self._peak_weight - self._baseline_weight
+                self._peak_weight = 0
                 if detected_cat_weight < 0:
                     _LOGGER.debug(
                         "%s: Negative cat weight (%.2f). Forcing to 0. Possibly sensor drift/noise.",
@@ -340,7 +338,9 @@ class CatLitterDetectionSensor(SensorEntity):
             self._add_reading(current_weight, event_time)
             stand_dev = statistics.stdev(r[1] for r in self._recent_readings)
 
-            if stand_dev <= 50 and len(self._recent_readings) >= 5:  # TODO magic numbers
+            if (
+                stand_dev <= AFTER_CAT_STANDARD_DEVIATION and len(self._recent_readings) >= 5
+            ):  # TODO magic numbers
                 self._detection_state = DetectionState.IDLE
                 self._waste_weight = max(current_weight - self._baseline_weight, 0)
                 self._baseline_weight = current_weight
