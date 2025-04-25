@@ -7,7 +7,8 @@ import random
 from datetime import datetime, timedelta
 
 
-from custom_components.cat_scale.sensor import CatLitterDetectionSensor, DetectionState
+from custom_components.cat_scale.sensor import DetectionState
+from tests.test_data.utils import FakeState, FakeEvent
 
 TESTS_TOLERANCE = 10
 
@@ -60,50 +61,10 @@ def feed_readings_to_sensor(sensor, readings):
         new_state.last_changed = timestamp
         event.time_fired = timestamp
     """
-
-    # We'll define a minimal event-like object
-    class FakeState:
-        def __init__(self, s, t):
-            self.state = s
-            self.last_changed = t
-            self.attributes = {}
-            self.entity_id = "sensor.fake"
-
-    class FakeEvent:
-        def __init__(self, new_state, time_fired):
-            self.data = {"new_state": new_state}
-            self.time_fired = time_fired
-
     for ts, w in readings:
         fstate = FakeState(str(w), ts)
         fevent = FakeEvent(fstate, ts)
         sensor._handle_source_sensor_state_event(fevent)
-
-
-@pytest.fixture
-def make_sensor(hass):
-    """
-    A Pytest fixture that creates a CatLitterDetectionSensor instance.
-    We pass in a "hass" fixture to mimic HA environment if needed,
-    or you can just pass None if you're not using real HA objects in your tests.
-    """
-
-    async def _make(name="Test Cat Sensor", threshold=700, min_time=2, leave_time=30):
-        sensor = CatLitterDetectionSensor(
-            hass=hass,
-            name=name,
-            source_entity="sensor.test_scale",
-            cat_weight_threshold=threshold,
-            min_presence_time=min_time,
-            leave_timeout=leave_time,
-        )
-        sensor.hass = hass
-        sensor.entity_id = "sensor.test_cat"
-        sensor._no_platform_reported = True
-        await sensor.async_added_to_hass()
-        return sensor
-
-    return _make
 
 
 @pytest.mark.asyncio
@@ -130,7 +91,7 @@ async def test_noisy_baseline_no_events(make_sensor):
     assert sensor._detection_state == DetectionState.IDLE
     assert sensor.state is None
     # baseline ~ 500, allow some margin
-    assert abs(sensor.baseline_weight - 500) < TESTS_TOLERANCE
+    assert sensor.baseline_weight == pytest.approx(500, abs=10)
 
 
 @pytest.mark.asyncio
@@ -208,7 +169,7 @@ async def test_baseline_change_down(make_sensor, hass):
     assert sensor.state is None
     assert sensor._detection_state == DetectionState.IDLE
     # We expect final baseline near 490
-    assert abs(sensor.baseline_weight - 490) < TESTS_TOLERANCE
+    assert sensor.baseline_weight == pytest.approx(490.0, 0.1)
 
 
 @pytest.mark.asyncio
