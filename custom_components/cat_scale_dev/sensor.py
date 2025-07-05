@@ -398,10 +398,10 @@ class CatLitterDetectionSensor(SensorEntity):
         """Return a suitable icon for the main sensor."""
         return "mdi:cat"
 
-    @property
-    def unit_of_measurement(self):
-        """Return grams for cat weight."""
-        return "g"
+    # @property
+    # def unit_of_measurement(self):
+    #     """Return grams for cat weight."""
+    #     return "g"
 
     @property
     def baseline_weight(self) -> float | None:
