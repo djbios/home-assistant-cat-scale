@@ -11,6 +11,7 @@ from homeassistant.const import (
     CONF_NAME,
     STATE_UNAVAILABLE,
     STATE_UNKNOWN,
+    UnitOfMass
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_state_change_event
@@ -357,14 +358,36 @@ class CatLitterDetectionSensor(SensorEntity):
         """Return the name of the main sensor."""
         return self._name
 
+    # @property
+    # def state(self):
+    #     """
+    #     Return the current cat weight detection result.
+    #     This remains None until an event is recognized for the first time,
+    #     then updates whenever a new cat event is finalized.
+    #     """
+    #     return self._state
+
     @property
-    def state(self):
+    def native_value(self) -> int | float:
+        """Return the state of the entity."""
+        # Using native value and native unit of measurement, allows you to change units
+        # in Lovelace and HA will automatically calculate the correct value.
+        return float(self._state)
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return unit of temperature."""
+        return UnitOfMass.GRAMS
+        
+    @property
+    def state_class(self) -> str | None:
         """
-        Return the current cat weight detection result.
-        This remains None until an event is recognized for the first time,
-        then updates whenever a new cat event is finalized.
+        Return state class.
+        This value is set to MEASUREMENT so it persists value over longer
+        time.        
         """
-        return self._state
+        # https://developers.home-assistant.io/docs/core/entity/sensor/#available-state-classes
+        return SensorStateClass.MEASUREMENT
 
     @property
     def icon(self):
