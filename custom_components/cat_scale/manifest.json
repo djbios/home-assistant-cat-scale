@@ -1,5 +1,5 @@
 {
-  "domain": "cat_scale dev",
+  "domain": "cat_scale_dev",
   "name": "Cat weight tracker - dev",
   "version": "1.0.0",
   "documentation": "https://github.com/lucasfijen/home-assistant-cat-scale",
