@@ -372,11 +372,11 @@ class CatLitterDetectionSensor(SensorEntity):
     #     return self._state
 
     @property
-    def native_value(self) -> int | float:
+    def native_value(self) -> float | None:
         """Return the state of the entity."""
         # Using native value and native unit of measurement, allows you to change units
         # in Lovelace and HA will automatically calculate the correct value.
-        return float(self._state)
+        return float(self._state) if self._state is not None else None
 
     @property
     def native_unit_of_measurement(self) -> str | None:
