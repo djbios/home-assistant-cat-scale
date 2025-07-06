@@ -11,6 +11,9 @@ from .const import (
 )
 
 
+from homeassistant.core import HomeAssistant, callback
+
+
 async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
     """Set up the integration from config entry."""
     # Forward the config entry to the sensor platform
@@ -22,13 +25,13 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry) -> bool:
     """Unload an entry."""
     return await hass.config_entries.async_forward_entry_unload(entry, "sensor")
-    
+
 async def async_setup_entry(hass: HomeAssistant, config_entry: MyConfigEntry) -> bool:
     """Set up the integration from config entry."""
     
-    cat_weight_threshold = entry.options.get(CONF_CAT_WEIGHT_THRESHOLD, entry.data.get(CONF_CAT_WEIGHT_THRESHOLD, DEFAULT_CAT_WEIGHT_THRESHOLD))
-    min_presence_time = entry.options.get(CONF_MIN_PRESENCE_TIME, entry.data.get(CONF_MIN_PRESENCE_TIME, DEFAULT_MIN_PRESENCE_TIME))
-    leave_timeout = entry.options.get(CONF_LEAVE_TIMEOUT, entry.data.get(CONF_LEAVE_TIMEOUT, DEFAULT_LEAVE_TIMEOUT))
+    cat_weight_threshold = config_entry.options.get(CONF_CAT_WEIGHT_THRESHOLD, config_entry.data.get(CONF_CAT_WEIGHT_THRESHOLD, DEFAULT_CAT_WEIGHT_THRESHOLD))
+    min_presence_time = config_entry.options.get(CONF_MIN_PRESENCE_TIME, config_entry.data.get(CONF_MIN_PRESENCE_TIME, DEFAULT_MIN_PRESENCE_TIME))
+    leave_timeout = config_entry.options.get(CONF_LEAVE_TIMEOUT, config_entry.data.get(CONF_LEAVE_TIMEOUT, DEFAULT_LEAVE_TIMEOUT))
 
 
     # Simple pass-through: no domain-level setup needed in this example
