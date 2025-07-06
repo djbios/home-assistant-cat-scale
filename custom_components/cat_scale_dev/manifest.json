@@ -8,5 +8,6 @@
   "codeowners": ["djbios"],
   "integration_type": "device",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/lucasfijen/home-assistant-cat-scale/issues"
+  "issue_tracker": "https://github.com/lucasfijen/home-assistant-cat-scale/issues",
+  "config_flow": true
 }
