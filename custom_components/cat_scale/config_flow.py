@@ -44,9 +44,7 @@ class CatScaleOptionsFlowHandler(OptionsFlow):
                         CONF_CAT_WEIGHT_THRESHOLD,
                         default=options.get(
                             CONF_CAT_WEIGHT_THRESHOLD,
-                            data.get(
-                                CONF_CAT_WEIGHT_THRESHOLD, DEFAULT_CAT_WEIGHT_THRESHOLD
-                            ),
+                            data.get(CONF_CAT_WEIGHT_THRESHOLD, DEFAULT_CAT_WEIGHT_THRESHOLD),
                         ),
                     ): vol.Coerce(int),
                     vol.Required(
@@ -106,9 +104,7 @@ class CatScaleConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_CAT_WEIGHT_THRESHOLD: user_input[CONF_CAT_WEIGHT_THRESHOLD],
                     CONF_MIN_PRESENCE_TIME: user_input[CONF_MIN_PRESENCE_TIME],
                     CONF_LEAVE_TIMEOUT: user_input[CONF_LEAVE_TIMEOUT],
-                    AFTER_CAT_STANDARD_DEVIATION: user_input[
-                        AFTER_CAT_STANDARD_DEVIATION
-                    ],
+                    AFTER_CAT_STANDARD_DEVIATION: user_input[AFTER_CAT_STANDARD_DEVIATION],
                 },
             )
         # Use either current options or data or default

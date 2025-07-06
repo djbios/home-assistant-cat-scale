@@ -1,5 +1,6 @@
 import csv
 from datetime import datetime
+import pathlib
 
 import pytest
 
@@ -7,8 +8,9 @@ from custom_components.cat_scale.sensor import DetectionState
 from tests.test_data.utils import FakeState, FakeEvent
 
 
-def readings(path):
-    with open(path) as f:
+def readings(filename):
+    base = pathlib.Path(__file__).parent / "test_data" / filename
+    with base.open() as f:
         for row in csv.DictReader(f):
             yield datetime.fromisoformat(row["last_changed"]), int(row["state"])
 
@@ -17,7 +19,7 @@ def readings(path):
 async def test1_csv(make_sensor):
     # Normal full cycle: cat comes, left about 30g, leave
     sensor = await make_sensor(threshold=1000, min_time=30, leave_time=600)
-    for dt, value in readings("test_data/test1.csv"):
+    for dt, value in readings("test1.csv"):
         state = FakeState(value, dt)
         event = FakeEvent(state, dt)
         sensor._handle_source_sensor_state_event(event)
@@ -35,7 +37,7 @@ async def test1_csv(make_sensor):
 async def test2_csv(make_sensor):
     # A bit weird example: cat does it business, but the baseline is actually becomes lower
     sensor = await make_sensor(threshold=1000, min_time=30, leave_time=600)
-    for dt, value in readings("test_data/test2.csv"):
+    for dt, value in readings("test2.csv"):
         state = FakeState(value, dt)
         event = FakeEvent(state, dt)
         sensor._handle_source_sensor_state_event(event)

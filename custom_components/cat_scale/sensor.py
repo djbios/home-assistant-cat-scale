@@ -3,10 +3,8 @@ from datetime import timedelta
 import logging
 import statistics
 
-import voluptuous as vol
 
 from homeassistant.components.sensor import (
-    PLATFORM_SCHEMA,
     RestoreSensor,
     SensorDeviceClass,
     SensorEntity,
@@ -35,14 +33,10 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
-) -> None:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     """Set up sensor(s) from a config entry."""
     # Extract config from entry.options with fallbacks
-    source_sensor = entry.data[
-        CONF_SOURCE_SENSOR
-    ]  # this should be in your initial config flow
+    source_sensor = entry.data[CONF_SOURCE_SENSOR]  # this should be in your initial config flow
 
     cat_weight_threshold = entry.options.get(
         CONF_CAT_WEIGHT_THRESHOLD,
@@ -57,9 +51,7 @@ async def async_setup_entry(
     )
     after_cat_standard_deviation = entry.options.get(
         AFTER_CAT_STANDARD_DEVIATION,
-        entry.data.get(
-            AFTER_CAT_STANDARD_DEVIATION, DEFAULT_AFTER_CAT_STANDARD_DEVIATION
-        ),
+        entry.data.get(AFTER_CAT_STANDARD_DEVIATION, DEFAULT_AFTER_CAT_STANDARD_DEVIATION),
     )
 
     # Create the main and sub sensors as before
@@ -80,9 +72,7 @@ async def async_setup_entry(
     main_sensor.register_sub_sensor(detection_state_sensor)
     main_sensor.register_sub_sensor(waste_sensor)
 
-    async_add_entities(
-        [main_sensor, baseline_sensor, detection_state_sensor, waste_sensor]
-    )
+    async_add_entities([main_sensor, baseline_sensor, detection_state_sensor, waste_sensor])
 
 
 class DetectionState:
@@ -200,9 +190,7 @@ class CatLitterDetectionSensor(RestoreSensor):
         try:
             weight = float(new_state.state)
         except ValueError:
-            _LOGGER.debug(
-                "%s: State (%s) is non-numeric. Ignoring.", self._name, new_state.state
-            )
+            _LOGGER.debug("%s: State (%s) is non-numeric. Ignoring.", self._name, new_state.state)
             return
 
         # Use last_changed if available; else fallback to event.time_fired
@@ -355,8 +343,7 @@ class CatLitterDetectionSensor(RestoreSensor):
             stand_dev = statistics.stdev(r[1] for r in self._recent_readings)
 
             if (
-                stand_dev <= self._after_cat_standard_deviation
-                and len(self._recent_readings) >= 5
+                stand_dev <= self._after_cat_standard_deviation and len(self._recent_readings) >= 5
             ):  # TODO magic numbers
                 self._detection_state = DetectionState.IDLE
                 self._waste_weight = max(current_weight - self._baseline_weight, 0)

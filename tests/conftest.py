@@ -11,7 +11,13 @@ def make_sensor(hass):
     or you can just pass None if you're not using real HA objects in your tests.
     """
 
-    async def _make(name="Test Cat Sensor", threshold=700, min_time=2, leave_time=30):
+    async def _make(
+        name="Test Cat Sensor",
+        threshold=700,
+        min_time=2,
+        leave_time=30,
+        after_cat_standard_deviation=50,
+    ):
         sensor = CatLitterDetectionSensor(
             hass=hass,
             name=name,
@@ -19,6 +25,7 @@ def make_sensor(hass):
             cat_weight_threshold=threshold,
             min_presence_time=min_time,
             leave_timeout=leave_time,
+            after_cat_standard_deviation=after_cat_standard_deviation,
         )
         sensor.hass = hass
         sensor.entity_id = "sensor.test_cat"
