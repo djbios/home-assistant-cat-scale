@@ -11,6 +11,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
     SensorDeviceClass,
+    RestoreSensor,
 )
 from homeassistant.const import (
     CONF_NAME,
