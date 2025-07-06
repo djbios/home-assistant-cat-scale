@@ -22,17 +22,16 @@ HACS > Integrations > 3 dots > Custom repositories > URL: `djbios/home-assistant
 ![qwe](https://pic.djbios.org/ijo4jd.png)
 
 ## Configuration
-This is the example configuration for the cat scale integration: 
+After installing the integration through HACS, the sensor can be configured through home assistant UI.
+Settings -> Devices & Services -> Add integration -> Cat weight tracker
 
-```yaml
-sensor:
-  - platform: cat_scale
-    name: "Cat weight"
-    source_sensor: sensor.weight_sensor # The entity_id of the weight sensor
-    cat_weight_threshold: 900 # The weight threshold, in grams, to determine if the cat is present
-    min_presence_time: 3 # The minimum time, in seconds, the cat must be present to be considered present
-    leave_timeout: 45 # The time, in seconds, the cat must be absent to be considered gone, or we will assume it's a new baseline (litter added or smth)
-```
+You will be asked for:
+  - **Source sensor**: the weight sensor to be used as source for this integration. Make sure your sensor is of device_type 'weight'
+  - **Cat weight threshold**: The weight threshold, in grams, to determine if the cat is present
+  - **Minimum presence time**: The minimum time, in seconds, the cat must be present to be considered present
+  - **Leave timeout**: The time, in seconds, the cat must be absent to be considered gone, or we will assume it's a new baseline (litter added or smth)
+  - **After-cat standard deviation**: Deviation value used to determine whether a cat left / is present. Default value is usually good enough
+
 Configuration recomendations:
 - `cat_weight_threshold` should be set to the average weight of your cat deducting 20-30%.
 - To set `min_presence_time` use your weight sensor historical data and set it to the average time your cat spends in the litterbox deducting 10-20%.
@@ -95,6 +94,8 @@ sensor:
     clk_pin: D3
     gain: 128
     update_interval: 2s
+    unit_of_measurement: g
+    device_class: weight
     filters:
       - calibrate_linear:
           - 212999 -> 0

@@ -1,0 +1,56 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Cat Scale",
+        "description": "Configure your cat scale integration.",
+        "data": {
+          "source_sensor": "Source sensor",
+          "cat_weight_threshold": "Cat weight threshold",
+          "min_presence_time": "Minimum presence time",
+          "leave_timeout": "Leave timeout",
+          "after_cat_standard_deviation": "After-cat standard deviation"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the device.",
+      "unknown": "Unknown error occurred."
+    },
+    "field": {
+      "source_sensor": {
+        "name": "Source sensor",
+        "description": "Select the weight sensor entity to use."
+      },
+      "cat_weight_threshold": {
+        "name": "Cat weight threshold",
+        "description": "Minimum weight (in grams) to detect a cat."
+      },
+      "min_presence_time": {
+        "name": "Minimum presence time",
+        "description": "Minimum time (in seconds) the cat must be present."
+      },
+      "leave_timeout": {
+        "name": "Leave timeout",
+        "description": "Time (in seconds) before considering the cat has left."
+      },
+      "after_cat_standard_deviation": {
+        "name": "After-cat standard deviation",
+        "description": "Standard deviation threshold for after-cat detection."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "baseline": {
+        "name": "Baseline"
+      },
+      "detection_state": {
+        "name": "Detection state"
+      },
+      "waste_weight": {
+        "name": "Waste weight"
+      }
+    }
+  }
+}
