@@ -11,7 +11,7 @@ from .const import (
 )
 
 from homeassistant.core import HomeAssistant, callback
-
+from homeassistant.config_entries import ConfigEntry
 
 async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
     """Set up the integration from config entry."""
@@ -25,7 +25,7 @@ async def async_unload_entry(hass: HomeAssistant, entry) -> bool:
     """Unload an entry."""
     return await hass.config_entries.async_forward_entry_unload(entry, "sensor")
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: MyConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up the integration from config entry."""
     
     cat_weight_threshold = config_entry.options.get(CONF_CAT_WEIGHT_THRESHOLD, config_entry.data.get(CONF_CAT_WEIGHT_THRESHOLD, DEFAULT_CAT_WEIGHT_THRESHOLD))
