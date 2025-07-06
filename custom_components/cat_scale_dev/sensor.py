@@ -75,6 +75,7 @@ class DetectionState:
     AFTER_CAT = "after_cat"
 
 
+
 class CatLitterDetectionSensor(RestoreSensor):
     """
     Main sensor that detects the presence of a cat on a litter scale
