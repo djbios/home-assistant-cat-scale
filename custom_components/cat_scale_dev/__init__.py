@@ -10,7 +10,6 @@ from .const import (
     DEFAULT_LEAVE_TIMEOUT,
 )
 
-
 from homeassistant.core import HomeAssistant, callback
 
 
