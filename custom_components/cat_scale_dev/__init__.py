@@ -35,3 +35,4 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
     # Simple pass-through: no domain-level setup needed in this example
     return True
+
