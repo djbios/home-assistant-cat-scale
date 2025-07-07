@@ -51,7 +51,10 @@
       },
       "waste_weight": {
         "name": "Waste weight"
-      }      
+      },
+      "cat_weight": {
+        "name": "Cat weight"
+      }
     }
   }
 }
