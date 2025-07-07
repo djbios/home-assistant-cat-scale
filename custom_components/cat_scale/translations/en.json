@@ -15,7 +15,8 @@
     },
     "error": {
       "cannot_connect": "Cannot connect to the device.",
-      "unknown": "Unknown error occurred."
+      "unknown": "Unknown error occurred.",
+      "not_positive": "The value must be positive."
     },
     "field": {
       "source_sensor": {
@@ -50,7 +51,7 @@
       },
       "waste_weight": {
         "name": "Waste weight"
-      }
+      }      
     }
   }
 }

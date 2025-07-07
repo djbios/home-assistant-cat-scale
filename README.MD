@@ -1,4 +1,21 @@
+
+**⚠️ Breaking Change in v2.0.0**
+>
+> This release introduces a new configuration system using the Home Assistant UI.  
+> **Manual YAML configuration is no longer supported.**
+>
+> **To migrate:**
+> 1. Remove any `cat_scale` configuration from your `configuration.yaml`.
+> 2. Delete the old Cat Scale integration from Home Assistant if it is present.
+> 3. Go to **Settings → Devices & Services → Add Integration → Cat weight tracker** and set up your sensor using the UI.
+>
+> **Why this change?**
+> - The integration now supports full UI configuration, unique IDs, device management, and improved Home Assistant compatibility.
+> - This makes setup easier and enables new features like renaming, device grouping, and long-term statistics.
+>
+> If you have any issues, please check the [issue tracker](https://github.com/djbios/home-assistant-cat-scale/issues) or open a new issue for help.
 # Cat scale integration for Home Assistant
+
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/djbios)
 
 ![CI](https://github.com/djbios/home-assistant-cat-scale/actions/workflows/tests.yml/badge.svg)
