@@ -6,6 +6,9 @@ on:
   pull_request:                  # ← add this
     branches: [main, beta]
 
+permissions:
+  pull-requests: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
