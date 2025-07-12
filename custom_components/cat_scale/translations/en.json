@@ -5,11 +5,11 @@
         "title": "Set up Cat Scale",
         "description": "Configure your cat scale integration.",
         "data": {
-          "source_sensor": "Source sensor",
-          "cat_weight_threshold": "Cat weight threshold",
-          "min_presence_time": "Minimum presence time",
-          "leave_timeout": "Leave timeout",
-          "after_cat_standard_deviation": "After-cat standard deviation"
+          "source_sensor": "Select the Home Assistant sensor entity that measures the weight of your litter box. This is typically a sensor created by your scale integration.",
+          "cat_weight_threshold": "Set the minimum weight (in grams) that will be considered as a cat entering the litter box. This helps to ignore small changes caused by other factors.",
+          "min_presence_time": "Specify the minimum amount of time (in seconds) the detected weight must remain above the threshold to count as a cat visit. This helps to filter out brief disturbances.",
+          "leave_timeout": "Set the time (in seconds) to wait after the cat leaves before considering the visit finished. This helps to avoid false detections if the cat returns quickly.",
+          "after_cat_standard_deviation": "Set the standard deviation threshold used to determine when the litter box weight has stabilized after a cat visit. Lower values make detection more sensitive to small changes."
         }
       }
     },
@@ -17,28 +17,6 @@
       "cannot_connect": "Cannot connect to the device.",
       "unknown": "Unknown error occurred.",
       "not_positive": "The value must be positive."
-    },
-    "field": {
-      "source_sensor": {
-        "name": "Source sensor",
-        "description": "Select the weight sensor entity to use."
-      },
-      "cat_weight_threshold": {
-        "name": "Cat weight threshold",
-        "description": "Minimum weight (in grams) to detect a cat."
-      },
-      "min_presence_time": {
-        "name": "Minimum presence time",
-        "description": "Minimum time (in seconds) the cat must be present."
-      },
-      "leave_timeout": {
-        "name": "Leave timeout",
-        "description": "Time (in seconds) before considering the cat has left."
-      },
-      "after_cat_standard_deviation": {
-        "name": "After-cat standard deviation",
-        "description": "Standard deviation threshold for after-cat detection."
-      }
     }
   },
   "entity": {
