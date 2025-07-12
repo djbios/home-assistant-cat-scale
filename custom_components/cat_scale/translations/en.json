@@ -21,7 +21,7 @@
   },
   "options": {
     "step": {
-      "user": {
+      "init": {
         "title": "Set up Cat Scale",
         "description": "Configure your cat scale integration.",
         "data": {
