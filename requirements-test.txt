@@ -1,2 +1,4 @@
 homeassistant
+pre-commit
 pytest-homeassistant-custom-component
+syrupy

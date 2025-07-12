@@ -7,6 +7,8 @@ import pytest
 from custom_components.cat_scale.sensor import DetectionState
 from tests.test_data.utils import FakeState, FakeEvent
 
+pytestmark = pytest.mark.asyncio
+
 
 def readings(filename):
     base = pathlib.Path(__file__).parent / "test_data" / filename
@@ -15,7 +17,6 @@ def readings(filename):
             yield datetime.fromisoformat(row["last_changed"]), int(row["state"])
 
 
-@pytest.mark.asyncio
 async def test1_csv(make_sensor):
     # Normal full cycle: cat comes, left about 30g, leave
     sensor = await make_sensor(threshold=1000, min_time=30, leave_time=600)
@@ -33,7 +34,6 @@ async def test1_csv(make_sensor):
     assert sensor.waste_weight == pytest.approx(30, abs=10), "Waste weight should be around 500g"
 
 
-@pytest.mark.asyncio
 async def test2_csv(make_sensor):
     # A bit weird example: cat does it business, but the baseline is actually becomes lower
     sensor = await make_sensor(threshold=1000, min_time=30, leave_time=600)

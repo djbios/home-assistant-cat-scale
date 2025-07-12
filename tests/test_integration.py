@@ -2,8 +2,9 @@ import pytest
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import device_registry as dr
 
+pytestmark = pytest.mark.asyncio
 
-@pytest.mark.asyncio
+
 async def test_entities_registered_and_available(init_integration, hass, snapshot):
     """Test that sensor entities are registered, available, and match snapshot."""
     entity_registry = er.async_get(hass)

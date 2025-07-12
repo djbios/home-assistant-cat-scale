@@ -12,8 +12,9 @@ from custom_components.cat_scale.const import (
 )
 from homeassistant.data_entry_flow import InvalidData
 
+pytestmark = pytest.mark.asyncio
 
-@pytest.mark.asyncio
+
 async def test_user_flow_success(hass: HomeAssistant):
     """Test a successful user config flow."""
     # Patch async_setup and async_setup_entry to prevent side effects
@@ -42,7 +43,6 @@ async def test_user_flow_success(hass: HomeAssistant):
         assert mock_setup_entry.called
 
 
-@pytest.mark.asyncio
 async def test_user_flow_invalid_values(hass: HomeAssistant):
     """Test config flow with invalid (non-positive) values."""
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
@@ -57,7 +57,6 @@ async def test_user_flow_invalid_values(hass: HomeAssistant):
         await hass.config_entries.flow.async_configure(result["flow_id"], user_input=user_input)
 
 
-@pytest.mark.asyncio
 async def test_duplicate_entry_aborts(hass: HomeAssistant):
     """Test that duplicate config entries are aborted."""
     user_input = {
@@ -80,7 +79,6 @@ async def test_duplicate_entry_aborts(hass: HomeAssistant):
     assert result3["reason"] == "already_configured"
 
 
-@pytest.mark.asyncio
 async def test_options_flow_success(hass, configured_entry):
     """Test successful options flow."""
     new_options = {
