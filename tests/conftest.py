@@ -1,6 +1,50 @@
+"""Configure pytest for Home Assistant tests."""
+
+import os
+import sys
+from unittest.mock import patch
+
 import pytest
+from homeassistant import config_entries, data_entry_flow
+
+# Add the custom_components directory to the Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from custom_components.cat_scale.sensor import CatLitterDetectionSensor
+from custom_components.cat_scale.const import (
+    DOMAIN,
+)
+
+
+@pytest.fixture(autouse=True)
+def auto_enable_custom_integrations(enable_custom_integrations):
+    """Enable custom integrations defined in the test dir."""
+    yield
+
+
+@pytest.fixture(autouse=True)
+async def setup_comp(hass):
+    """Set up the component for testing."""
+    # Create a mock for the async_setup_entry function
+    with patch("custom_components.cat_scale.async_setup_entry", return_value=True):
+        # Set up the component
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        assert result["type"] == data_entry_flow.FlowResultType.FORM
+        await hass.async_block_till_done()
+        yield
+
+
+@pytest.fixture
+def mock_flow_handler():
+    """Mock the flow handler."""
+    with patch("custom_components.cat_scale.config_flow.CatScaleConfigFlow") as mock_handler:
+        mock_handler.return_value.async_step_user.return_value = {
+            "type": data_entry_flow.FlowResultType.FORM,
+            "step_id": "user",
+        }
+        yield mock_handler.return_value
 
 
 @pytest.fixture
@@ -30,7 +74,7 @@ def make_sensor(hass):
         sensor.hass = hass
         sensor.entity_id = "sensor.test_cat"
         sensor._no_platform_reported = True
-        sensor._attr_translation_key = None
+        sensor.translation_key = None
         await sensor.async_added_to_hass()
         return sensor
 
