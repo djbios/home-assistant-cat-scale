@@ -78,3 +78,22 @@ async def test_duplicate_entry_aborts(hass: HomeAssistant):
     )
     assert result3["type"] == FlowResultType.ABORT
     assert result3["reason"] == "already_configured"
+
+
+@pytest.mark.asyncio
+async def test_options_flow_success(hass, configured_entry):
+    """Test successful options flow."""
+    new_options = {
+        CONF_CAT_WEIGHT_THRESHOLD: 3500,
+        CONF_MIN_PRESENCE_TIME: 8,
+        CONF_LEAVE_TIMEOUT: 20,
+        CONF_AFTER_CAT_STANDARD_DEVIATION: 2,
+    }
+    result = await hass.config_entries.options.async_init(configured_entry.entry_id)
+    assert result["type"] == "form"
+    result2 = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input=new_options
+    )
+    assert result2["type"] == "create_entry"
+    assert result2["data"] == new_options
+    assert configured_entry.options == new_options

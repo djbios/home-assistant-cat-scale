@@ -54,6 +54,25 @@ async def init_integration(hass, mock_config_entry):
     return mock_config_entry
 
 
+@pytest.fixture(name="configured_entry")
+def fixture_configured_entry(hass) -> MockConfigEntry:
+    """A fully set-up config entry used by options-flow tests."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="sensor.my_weight",
+        data={
+            CONF_SOURCE_SENSOR: "sensor.my_weight",
+            CONF_CAT_WEIGHT_THRESHOLD: 1000,
+            CONF_MIN_PRESENCE_TIME: 10,
+            CONF_LEAVE_TIMEOUT: 60,
+            CONF_AFTER_CAT_STANDARD_DEVIATION: 50,
+        },
+        options={},  # Start with no options stored
+    )
+    entry.add_to_hass(hass)
+    return entry
+
+
 # For pure logic/unit tests only (not Silver+ integration tests)
 @pytest.fixture
 def make_sensor(hass):
