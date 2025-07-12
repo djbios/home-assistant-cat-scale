@@ -24,6 +24,10 @@ jobs:
 
       - name: Run tests
         run: |
+          pre-commit run --all-files --show-diff-on-failure --color=always
+
+      - name: Run tests
+        run: |
           pytest 
       - name: Pytest coverage comment
         uses: MishaKav/pytest-coverage-comment@main
