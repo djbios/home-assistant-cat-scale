@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Set up Cat Scale",
-        "description": "Configure your cat scale integration.",
+        "description": "Configure your cat scale integration. For more information on the fields, see: https://github.com/djbios/home-assistant-cat-scale?tab=readme-ov-file#algorithm-overview",
         "data": {
           "source_sensor": "Source sensor for weight",
           "cat_weight_threshold": "Cat weight threshold (g)",
@@ -23,7 +23,7 @@
     "step": {
       "init": {
         "title": "Set up Cat Scale",
-        "description": "Configure your cat scale integration.",
+        "description": "Configure your cat scale integration. For more information on the fields, see: https://github.com/djbios/home-assistant-cat-scale?tab=readme-ov-file#algorithm-overview",
         "data": {
           "cat_weight_threshold": "Cat weight threshold (g)",
           "min_presence_time": "Minimum presence time (s)",
