@@ -25,8 +25,7 @@ jobs:
       - name: Run tests
         run: |
           pytest 
-
-      - name: pytest-coverage-commentator
-        uses: coroo/pytest-coverage-commentator@v1.0.2
+      - name: Pytest coverage comment
+        uses: MishaKav/pytest-coverage-comment@main
         with:
-          pytest-coverage: ./coverage.xml
+          pytest-coverage-path: ./coverage.xml
