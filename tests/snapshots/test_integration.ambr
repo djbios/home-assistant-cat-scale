@@ -1,0 +1,71 @@
+# serializer version: 1
+# name: test_entities_registered_and_available
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      'device_class': 'weight',
+      'friendly_name': 'Cat weight Cat weight',
+      'icon': 'mdi:cat',
+      'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
+      'unit_of_measurement': <UnitOfMass.GRAMS: 'g'>,
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.cat_weight_cat_weight',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'unknown',
+  })
+# ---
+# name: test_entities_registered_and_available.1
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      'device_class': 'weight',
+      'friendly_name': 'Cat weight Baseline',
+      'icon': 'mdi:scale-balance',
+      'unit_of_measurement': <UnitOfMass.GRAMS: 'g'>,
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.cat_weight_baseline',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': '0',
+  })
+# ---
+# name: test_entities_registered_and_available.2
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      'device_class': 'enum',
+      'friendly_name': 'Cat weight Detection state',
+      'icon': 'mdi:radar',
+      'options': list([
+        'idle',
+        'waiting_for_confirmation',
+        'cat_present',
+        'after_cat',
+      ]),
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.cat_weight_detection_state',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'idle',
+  })
+# ---
+# name: test_entities_registered_and_available.3
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      'device_class': 'weight',
+      'friendly_name': 'Cat weight Waste weight',
+      'icon': 'mdi:delete-variant',
+      'unit_of_measurement': <UnitOfMass.GRAMS: 'g'>,
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.cat_weight_waste_weight',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': '0.0',
+  })
+# ---

@@ -2,6 +2,8 @@ name: HACS validation
 
 on:
   push:
+  pull_request:                  # ← add this
+    branches: [main, beta]
 
 jobs:
   validate-hacs:
@@ -11,3 +13,5 @@ jobs:
         uses: "hacs/action@main"
         with:
           category: "integration"
+          # Currently this repo is not published in HACS, see: https://github.com/djbios/home-assistant-cat-scale/issues/8
+          ignore: "brands"
