@@ -2,6 +2,8 @@ name: HACS validation
 
 on:
   push:
+  pull_request:                  # ← add this
+    branches: [main, beta]
 
 jobs:
   validate-hacs:
