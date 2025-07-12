@@ -20,29 +20,21 @@ from .const import (
     DEFAULT_MIN_PRESENCE_TIME,
     DOMAIN,
 )
-from homeassistant.config_entries import OptionsFlowWithConfigEntry
 
 
-class CatScaleOptionsFlowHandler(OptionsFlowWithConfigEntry):
+# Uses new OptionsFlow pattern: config_entry is injected by Home Assistant (2025.12+)
+class CatScaleOptionsFlowHandler(OptionsFlow):
     """Handle a config options flow for cat_scale."""
 
     async def async_step_init(self, user_input=None):
         "Handle options flow."
-        errors = {}
 
         # Use either current options or data or default
         options = self.config_entry.options
         data = self.config_entry.data
 
         if user_input is not None:
-            if not user_input[CONF_CAT_WEIGHT_THRESHOLD] > 0:
-                errors[CONF_CAT_WEIGHT_THRESHOLD] = "not_positive"
-            if not user_input[CONF_MIN_PRESENCE_TIME] > 0:
-                errors[CONF_MIN_PRESENCE_TIME] = "not_positive"
-            if not user_input[CONF_LEAVE_TIMEOUT] > 0:
-                errors[CONF_LEAVE_TIMEOUT] = "not_positive"
-            if not errors:
-                return self.async_create_entry(title="", data=user_input)
+            return self.async_create_entry(title="", data=user_input)
 
         return self.async_show_form(
             step_id="init",
@@ -81,7 +73,7 @@ class CatScaleOptionsFlowHandler(OptionsFlowWithConfigEntry):
                     ): cv.positive_int,
                 }
             ),
-            errors=errors,
+            errors={},
         )
 
 
@@ -100,30 +92,22 @@ class CatScaleConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step of the config flow."""
-        errors = {}
         if user_input is not None:
             await self.async_set_unique_id(user_input[CONF_SOURCE_SENSOR])
             self._abort_if_unique_id_configured()
             # Save all settings to data (unmodifiable later unless by user editing storage directly)
-            if not user_input[CONF_CAT_WEIGHT_THRESHOLD] > 0:
-                errors[CONF_CAT_WEIGHT_THRESHOLD] = "not_positive"
-            if not user_input[CONF_MIN_PRESENCE_TIME] > 0:
-                errors[CONF_MIN_PRESENCE_TIME] = "not_positive"
-            if not user_input[CONF_LEAVE_TIMEOUT] > 0:
-                errors[CONF_LEAVE_TIMEOUT] = "not_positive"
-            if not errors:
-                return self.async_create_entry(
-                    title=user_input[CONF_SOURCE_SENSOR],
-                    data={
-                        CONF_SOURCE_SENSOR: user_input[CONF_SOURCE_SENSOR],
-                        CONF_CAT_WEIGHT_THRESHOLD: user_input[CONF_CAT_WEIGHT_THRESHOLD],
-                        CONF_MIN_PRESENCE_TIME: user_input[CONF_MIN_PRESENCE_TIME],
-                        CONF_LEAVE_TIMEOUT: user_input[CONF_LEAVE_TIMEOUT],
-                        CONF_AFTER_CAT_STANDARD_DEVIATION: user_input[
-                            CONF_AFTER_CAT_STANDARD_DEVIATION
-                        ],
-                    },
-                )
+            return self.async_create_entry(
+                title=user_input[CONF_SOURCE_SENSOR],
+                data={
+                    CONF_SOURCE_SENSOR: user_input[CONF_SOURCE_SENSOR],
+                    CONF_CAT_WEIGHT_THRESHOLD: user_input[CONF_CAT_WEIGHT_THRESHOLD],
+                    CONF_MIN_PRESENCE_TIME: user_input[CONF_MIN_PRESENCE_TIME],
+                    CONF_LEAVE_TIMEOUT: user_input[CONF_LEAVE_TIMEOUT],
+                    CONF_AFTER_CAT_STANDARD_DEVIATION: user_input[
+                        CONF_AFTER_CAT_STANDARD_DEVIATION
+                    ],
+                },
+            )
         # Use either current options or data or default
         return self.async_show_form(
             step_id="user",
@@ -156,5 +140,5 @@ class CatScaleConfigFlow(ConfigFlow, domain=DOMAIN):
                     ): cv.positive_int,
                 }
             ),
-            errors=errors,
+            errors={},
         )

@@ -155,11 +155,24 @@ class CatLitterDetectionSensor(RestoreSensor):
 
     async def async_added_to_hass(self):
         """When entity is added to hass, set up state listener on the source sensor."""
+        await super().async_added_to_hass()
         _LOGGER.debug(
             "Adding %s to hass. Subscribing to source sensor: %s",
             self._name,
             self._source_entity,
         )
+
+        # Restore previous native value if available
+        if (last_sensor_data := await self.async_get_last_sensor_data()) is not None:
+            try:
+                self._state = float(last_sensor_data.native_value)
+                _LOGGER.debug("%s: Restored native_value to %.2f", self._name, self._state)
+            except (ValueError, TypeError):
+                _LOGGER.debug(
+                    "%s: Could not restore native_value from %s",
+                    self._name,
+                    last_sensor_data.native_value,
+                )
 
         self._unsub_listener = async_track_state_change_event(
             self._hass, [self._source_entity], self._handle_source_sensor_state_event

@@ -30,6 +30,7 @@ def make_sensor(hass):
         sensor.hass = hass
         sensor.entity_id = "sensor.test_cat"
         sensor._no_platform_reported = True
+        sensor._attr_translation_key = None
         await sensor.async_added_to_hass()
         return sensor
 
