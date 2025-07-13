@@ -9,10 +9,6 @@ on:
 
 jobs:
   test:
-    permissions:
-      contents: write
-      checks: write
-      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - name: Check out the code
@@ -34,12 +30,6 @@ jobs:
       - name: Run tests
         run: |
           pytest 
-
-      - name: Pytest coverage comment
-        id: coverageComment
-        uses: MishaKav/pytest-coverage-comment@main
-        with:
-          pytest-xml-coverage-path: coverage.xml
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v5
