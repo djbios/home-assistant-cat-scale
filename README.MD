@@ -20,9 +20,6 @@
 
 ![CI](https://github.com/djbios/home-assistant-cat-scale/actions/workflows/tests.yml/badge.svg)
 
-<!-- Pytest Coverage Comment:Begin -->
-<!-- Pytest Coverage Comment:End -->
-
 <img src="https://pic.djbios.org/r3qe8x.png" alt="drawing" width="400"/>
 
 
