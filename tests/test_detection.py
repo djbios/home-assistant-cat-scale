@@ -11,6 +11,7 @@ from custom_components.cat_scale.sensor import DetectionState
 from tests.test_data.utils import FakeState, FakeEvent
 
 TESTS_TOLERANCE = 10
+pytestmark = pytest.mark.asyncio
 
 
 def generate_series(
@@ -67,7 +68,6 @@ def feed_readings_to_sensor(sensor, readings):
         sensor._handle_source_sensor_state_event(fevent)
 
 
-@pytest.mark.asyncio
 async def test_noisy_baseline_no_events(make_sensor):
     """
     just noisy baseline no events: assert baseline is set, but no cat detection
@@ -94,7 +94,6 @@ async def test_noisy_baseline_no_events(make_sensor):
     assert sensor.baseline_weight == pytest.approx(500, abs=10)
 
 
-@pytest.mark.asyncio
 async def test_cat_come_left_same_baseline(make_sensor):
     """
     baseline -> cat come -> cat left => same baseline
@@ -139,7 +138,6 @@ async def test_cat_come_left_same_baseline(make_sensor):
     )
 
 
-@pytest.mark.asyncio
 async def test_baseline_change_down(make_sensor, hass):
     """
     Scenario: baseline is 500, but then the scale consistently reads ~490 after some event
@@ -172,7 +170,6 @@ async def test_baseline_change_down(make_sensor, hass):
     assert sensor.baseline_weight == pytest.approx(490.0, 0.1)
 
 
-@pytest.mark.asyncio
 async def test_baseline_change_up_less_than_cat(make_sensor, hass):
     """
     Baseline slowly creeps up by +30g, but threshold is 50.
@@ -204,7 +201,6 @@ async def test_baseline_change_up_less_than_cat(make_sensor, hass):
     assert sensor._detection_state == DetectionState.IDLE
 
 
-@pytest.mark.asyncio
 async def test_cat_come_left_quickly_no_update(make_sensor, hass):
     """
     The cat is above threshold for less than min_presence_time -> no detection
@@ -237,7 +233,6 @@ async def test_cat_come_left_quickly_no_update(make_sensor, hass):
     assert sensor._detection_state == DetectionState.IDLE
 
 
-@pytest.mark.asyncio
 async def test_cat_come_waste_left_all_sensors(make_sensor, hass):
     """
     baseline -> cat come -> confirm -> cat leaves -> leaves waste =>

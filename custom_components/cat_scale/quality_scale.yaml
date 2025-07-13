@@ -1,0 +1,36 @@
+rules:
+   # Bronze (mandatory)
+    action-setup:
+      status: exempt
+      comment: Integration does not register custom actions.
+    appropriate-polling:
+      status: exempt
+      comment: Integration is event-driven, does not poll.
+    brands:
+      status: todo
+      comment: Will need a logo.
+    common-modules: done  # Constants are in const.py; no other shared helpers needed.
+    config-flow: done
+    config-flow-test-coverage:
+      status: todo
+      comment: No tests for the config-flow yet.
+    dependency-transparency: done  # manifest.json has an empty requirements list, so all deps are transparent.
+    docs-actions:
+      status: exempt
+      comment: No services/actions are registered.
+    docs-high-level-description: done  # README gives a clear overview.
+    docs-installation-instructions: done  # README explains manual & HACS install.
+    docs-removal-instructions:
+      status: todo
+      comment: No uninstall/removal steps documented.
+    entity-event-setup: done  # Entities subscribe/unsubscribe to events in the correct lifecycle methods.
+    entity-unique-id: done
+    has-entity-name: done  # All entities set _attr_has_entity_name = True.
+    runtime-data: done  # No global hass.data; entities store their own runtime data.
+    test-before-configure:
+      status: exempt
+      comment: No external connection to test.
+    test-before-setup:
+      status: exempt
+      comment: Same reason as above.
+    unique-config-entry: done  # async_set_unique_id() uses the source sensor ID.

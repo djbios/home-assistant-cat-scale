@@ -1,0 +1,57 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Cat Scale",
+        "description": "Configure your cat scale integration.\n\n• Source sensor: Select the weight sensor entity to use as the source for this integration. It should have device class 'weight'.\n• Cat weight threshold: The minimum weight (in grams) to detect your cat. Set to your cat's average weight minus 20–30%.\n• Minimum presence time: The minimum time (in seconds) the cat must be present to count as a visit. Use your cat's average litterbox time minus 10–20%.\n• Leave timeout: Time (in seconds) after the cat leaves before ending the visit. Increase if your cat often returns quickly.\n• After-cat standard deviation: Used to detect when the weight has stabilized after a visit. Default is usually fine.\n\nFor more details, see the README: https://github.com/djbios/home-assistant-cat-scale?tab=readme-ov-file#algorithm-overview",
+        "data": {
+          "source_sensor": "Source sensor for weight",
+          "cat_weight_threshold": "Cat weight threshold (g)",
+          "min_presence_time": "Minimum presence time (s)",
+          "leave_timeout": "Leave timeout (s)",
+          "after_cat_standard_deviation": "After-cat standard deviation"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the device.",
+      "unknown": "Unknown error occurred.",
+      "not_positive": "The value must be positive."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Set up Cat Scale",
+        "description": "Configure your cat scale integration.\n\n• Source sensor: Select the weight sensor entity to use as the source for this integration. It should have device class 'weight'.\n• Cat weight threshold: The minimum weight (in grams) to detect your cat. Set to your cat's average weight minus 20–30%.\n• Minimum presence time: The minimum time (in seconds) the cat must be present to count as a visit. Use your cat's average litterbox time minus 10–20%.\n• Leave timeout: Time (in seconds) after the cat leaves before ending the visit. Increase if your cat often returns quickly.\n• After-cat standard deviation: Used to detect when the weight has stabilized after a visit. Default is usually fine.\n\nFor more details, see the README: https://github.com/djbios/home-assistant-cat-scale?tab=readme-ov-file#algorithm-overview",
+        "data": {
+          "cat_weight_threshold": "Cat weight threshold (g)",
+          "min_presence_time": "Minimum presence time (s)",
+          "leave_timeout": "Leave timeout (s)",
+          "after_cat_standard_deviation": "After-cat standard deviation"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the device.",
+      "unknown": "Unknown error occurred.",
+      "not_positive": "The value must be positive."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "baseline": {
+        "name": "Baseline"
+      },
+      "detection_state": {
+        "name": "Detection state"
+      },
+      "waste_weight": {
+        "name": "Waste weight"
+      },
+      "cat_weight": {
+        "name": "Cat weight"
+      }
+    }
+  }
+}

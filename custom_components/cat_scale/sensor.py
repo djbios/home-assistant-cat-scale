@@ -1,78 +1,78 @@
-import logging
-import statistics
 from collections import deque
 from datetime import timedelta
+import logging
+import statistics
 
-import voluptuous as vol
-import homeassistant.helpers.config_validation as cv
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
-from homeassistant.const import (
-    CONF_NAME,
-    STATE_UNAVAILABLE,
-    STATE_UNKNOWN,
+from homeassistant.components.sensor import (
+    RestoreSensor,
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
 )
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN, UnitOfMass
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr
+
+from .const import (
+    CONF_AFTER_CAT_STANDARD_DEVIATION,
+    CONF_CAT_WEIGHT_THRESHOLD,
+    CONF_LEAVE_TIMEOUT,
+    CONF_MIN_PRESENCE_TIME,
+    CONF_SOURCE_SENSOR,
+    DEFAULT_AFTER_CAT_STANDARD_DEVIATION,
+    DEFAULT_CAT_WEIGHT_THRESHOLD,
+    DEFAULT_LEAVE_TIMEOUT,
+    DEFAULT_MIN_PRESENCE_TIME,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-CONF_SOURCE_SENSOR = "source_sensor"
-CONF_CAT_WEIGHT_THRESHOLD = "cat_weight_threshold"
-CONF_MIN_PRESENCE_TIME = "min_presence_time"
-CONF_LEAVE_TIMEOUT = "leave_timeout"
 
-DEFAULT_NAME = "Cat Litter Detected Weight"
-DEFAULT_CAT_WEIGHT_THRESHOLD = 1000
-DEFAULT_MIN_PRESENCE_TIME = 4
-DEFAULT_LEAVE_TIMEOUT = 120
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
+    """Set up sensor(s) from a config entry."""
+    # Extract config from entry.options with fallbacks
+    source_sensor = entry.data[CONF_SOURCE_SENSOR]  # this should be in your initial config flow
 
-AFTER_CAT_STANDARD_DEVIATION = 50
+    cat_weight_threshold = entry.options.get(
+        CONF_CAT_WEIGHT_THRESHOLD,
+        entry.data.get(CONF_CAT_WEIGHT_THRESHOLD, DEFAULT_CAT_WEIGHT_THRESHOLD),
+    )
+    min_presence_time = entry.options.get(
+        CONF_MIN_PRESENCE_TIME,
+        entry.data.get(CONF_MIN_PRESENCE_TIME, DEFAULT_MIN_PRESENCE_TIME),
+    )
+    leave_timeout = entry.options.get(
+        CONF_LEAVE_TIMEOUT, entry.data.get(CONF_LEAVE_TIMEOUT, DEFAULT_LEAVE_TIMEOUT)
+    )
+    after_cat_standard_deviation = entry.options.get(
+        CONF_AFTER_CAT_STANDARD_DEVIATION,
+        entry.data.get(CONF_AFTER_CAT_STANDARD_DEVIATION, DEFAULT_AFTER_CAT_STANDARD_DEVIATION),
+    )
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Required(CONF_SOURCE_SENSOR): cv.entity_id,
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-        vol.Optional(
-            CONF_CAT_WEIGHT_THRESHOLD, default=DEFAULT_CAT_WEIGHT_THRESHOLD
-        ): cv.positive_int,
-        vol.Optional(CONF_MIN_PRESENCE_TIME, default=DEFAULT_MIN_PRESENCE_TIME): cv.positive_int,
-        vol.Optional(CONF_LEAVE_TIMEOUT, default=DEFAULT_LEAVE_TIMEOUT): cv.positive_int,
-    }
-)
-
-
-async def async_setup_platform(
-    hass: HomeAssistant, config, async_add_entities, discovery_info=None
-):
-    """Set up the cat litter detection sensor platform."""
-    source_sensor = config[CONF_SOURCE_SENSOR]
-    name = config[CONF_NAME]
-    cat_weight_threshold = config[CONF_CAT_WEIGHT_THRESHOLD]
-    min_presence_time = config[CONF_MIN_PRESENCE_TIME]
-    leave_timeout = config[CONF_LEAVE_TIMEOUT]
-
-    # Create the main detection sensor
+    # Create the main and sub sensors as before
     main_sensor = CatLitterDetectionSensor(
         hass=hass,
-        name=name,
+        name=None,
         source_entity=source_sensor,
         cat_weight_threshold=cat_weight_threshold,
         min_presence_time=min_presence_time,
         leave_timeout=leave_timeout,
+        after_cat_standard_deviation=after_cat_standard_deviation,
     )
-
-    # Create the extra sensors for baseline, detection state, and waste weight
     baseline_sensor = CatLitterBaselineSensor(main_sensor)
     detection_state_sensor = CatLitterDetectionStateSensor(main_sensor)
     waste_sensor = CatLitterWasteSensor(main_sensor)
 
-    # Let the main sensor know about the sub-sensors
     main_sensor.register_sub_sensor(baseline_sensor)
     main_sensor.register_sub_sensor(detection_state_sensor)
     main_sensor.register_sub_sensor(waste_sensor)
 
-    # Add all entities to Home Assistant
     async_add_entities([main_sensor, baseline_sensor, detection_state_sensor, waste_sensor])
 
 
@@ -85,34 +85,39 @@ class DetectionState:
     AFTER_CAT = "after_cat"
 
 
-class CatLitterDetectionSensor(SensorEntity):
-    """
-    Main sensor that detects the presence of a cat on a litter scale
+class CatLitterDetectionSensor(RestoreSensor):
+    """Main sensor that detects the presence of a cat on a litter scale
     and computes the cat's weight as (peak_weight - baseline_weight).
 
     Also tracks 'waste weight' by comparing new baseline after cat leaves
     to the baseline before the cat arrived.
     """
 
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.WEIGHT
+    _attr_translation_key = "cat_weight"
+
     def __init__(
         self,
-        hass,
-        name,
-        source_entity,
-        cat_weight_threshold,
-        min_presence_time,
-        leave_timeout,
-    ):
+        hass: HomeAssistant,
+        name: str,
+        source_entity: str,
+        cat_weight_threshold: int,
+        min_presence_time: int,
+        leave_timeout: int,
+        after_cat_standard_deviation: int,
+    ) -> None:
         """Initialize the cat litter detection sensor."""
         self._hass = hass
         self._name = name
         self._source_entity = source_entity
-        self._attr_unique_id = f"{name}_{source_entity}"
+        self._attr_unique_id = f"{source_entity}_cat_detection"
 
         # Configurable parameters
         self._threshold = cat_weight_threshold
         self._min_presence_time = timedelta(seconds=min_presence_time)
         self._leave_timeout = timedelta(seconds=leave_timeout)
+        self._after_cat_standard_deviation = after_cat_standard_deviation
 
         # Keep recent readings, mostly for debugging or if you need them later
         # Format: deque of (timestamp, weight)
@@ -150,11 +155,24 @@ class CatLitterDetectionSensor(SensorEntity):
 
     async def async_added_to_hass(self):
         """When entity is added to hass, set up state listener on the source sensor."""
+        await super().async_added_to_hass()
         _LOGGER.debug(
             "Adding %s to hass. Subscribing to source sensor: %s",
             self._name,
             self._source_entity,
         )
+
+        # Restore previous native value if available
+        if (last_sensor_data := await self.async_get_last_sensor_data()) is not None:
+            try:
+                self._state = float(last_sensor_data.native_value)
+                _LOGGER.debug("%s: Restored native_value to %.2f", self._name, self._state)
+            except (ValueError, TypeError):
+                _LOGGER.debug(
+                    "%s: Could not restore native_value from %s",
+                    self._name,
+                    last_sensor_data.native_value,
+                )
 
         self._unsub_listener = async_track_state_change_event(
             self._hass, [self._source_entity], self._handle_source_sensor_state_event
@@ -177,7 +195,7 @@ class CatLitterDetectionSensor(SensorEntity):
 
         if new_state.state in [STATE_UNKNOWN, STATE_UNAVAILABLE]:
             _LOGGER.debug(
-                "%s: State is unknown/unavailable (%s). Ignoring.",
+                "%s: State is unknown/unavailable (%s) Ignoring",
                 self._name,
                 new_state.state,
             )
@@ -186,7 +204,7 @@ class CatLitterDetectionSensor(SensorEntity):
         try:
             weight = float(new_state.state)
         except ValueError:
-            _LOGGER.debug("%s: State (%s) is non-numeric. Ignoring.", self._name, new_state.state)
+            _LOGGER.debug("%s: State (%s) is non-numeric. Ignoring", self._name, new_state.state)
             return
 
         # Use last_changed if available; else fallback to event.time_fired
@@ -254,16 +272,15 @@ class CatLitterDetectionSensor(SensorEntity):
                     event_time,
                     self._baseline_weight,
                 )
-            else:
+            elif self._recent_readings:
                 # If presumably empty, we can adjust the baseline slowly or with a simple average
-                if self._recent_readings:
-                    median = statistics.median(r[1] for r in self._recent_readings)
-                    self._baseline_weight = median
-                    _LOGGER.debug(
-                        "%s: Updated baseline to average of recent: %.2f",
-                        self._name,
-                        self._baseline_weight,
-                    )
+                median = statistics.median(r[1] for r in self._recent_readings)
+                self._baseline_weight = median
+                _LOGGER.debug(
+                    "%s: Updated baseline to average of recent: %.2f",
+                    self._name,
+                    self._baseline_weight,
+                )
 
         elif self._detection_state == DetectionState.WAITING_FOR_CONFIRMATION:
             if current_weight >= trigger_level:
@@ -302,7 +319,7 @@ class CatLitterDetectionSensor(SensorEntity):
                 # Check if we've exceeded leave_timeout
                 if (event_time - self._cat_confirmed_time) > self._leave_timeout:
                     _LOGGER.debug(
-                        "%s: Cat presence took too long. Discarding event. baseline -> %.2f, clearing readings.",
+                        "%s: Cat presence took too long. Discarding event. baseline -> %.2f, clearing readings",
                         self._name,
                         current_weight,
                     )
@@ -315,7 +332,7 @@ class CatLitterDetectionSensor(SensorEntity):
                 self._peak_weight = 0
                 if detected_cat_weight < 0:
                     _LOGGER.debug(
-                        "%s: Negative cat weight (%.2f). Forcing to 0. Possibly sensor drift/noise.",
+                        "%s: Negative cat weight (%.2f). Forcing to 0. Possibly sensor drift/noise",
                         self._name,
                         detected_cat_weight,
                     )
@@ -339,7 +356,7 @@ class CatLitterDetectionSensor(SensorEntity):
             stand_dev = statistics.stdev(r[1] for r in self._recent_readings)
 
             if (
-                stand_dev <= AFTER_CAT_STANDARD_DEVIATION and len(self._recent_readings) >= 5
+                stand_dev <= self._after_cat_standard_deviation and len(self._recent_readings) >= 5
             ):  # TODO magic numbers
                 self._detection_state = DetectionState.IDLE
                 self._waste_weight = max(current_weight - self._baseline_weight, 0)
@@ -353,28 +370,65 @@ class CatLitterDetectionSensor(SensorEntity):
                 )
 
     @property
-    def name(self):
-        """Return the name of the main sensor."""
-        return self._name
+    def device_info(self):
+        """Return device information for the cat litter detection sensor.
+
+        This method attempts to merge device info with the source sensor's device,
+        so that entities are grouped together in the device registry.
+        """
+        entity_reg = er.async_get(self._hass)
+        device_reg = dr.async_get(self._hass)
+        if entity_reg and device_reg:
+            if entry := entity_reg.async_get(self._source_entity):
+                if entry.device_id and (device := device_reg.async_get(entry.device_id)):
+                    # Use all information from source sensor device
+                    # Such that our entities will me merged with the scale device
+                    return DeviceInfo(
+                        identifiers=device.identifiers,
+                        connections=device.connections,
+                        manufacturer=device.manufacturer,
+                        model=device.model,
+                        name=device.name,
+                        sw_version=device.sw_version,
+                        hw_version=device.hw_version,
+                        serial_number=device.serial_number,
+                        configuration_url=device.configuration_url,
+                        suggested_area=device.suggested_area,
+                        entry_type=device.entry_type,
+                    )
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._source_entity)},
+            name="Cat weight",
+            manufacturer="Weight sensor for ordinary Cat litterbox",
+            model="Smart Litter Box",
+        )
 
     @property
-    def state(self):
+    def native_value(self) -> float | None:
+        """Return the state of the entity."""
+        # Using native value and native unit of measurement, allows you to change units
+        # in Lovelace and HA will automatically calculate the correct value.
+        return float(self._state) if self._state is not None else None
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return unit of mass."""
+        return UnitOfMass.GRAMS
+
+    @property
+    def state_class(self) -> str | None:
+        """Return state class.
+
+        This value is set to MEASUREMENT so it persists value over longer
+        time.
         """
-        Return the current cat weight detection result.
-        This remains None until an event is recognized for the first time,
-        then updates whenever a new cat event is finalized.
-        """
-        return self._state
+        # https://developers.home-assistant.io/docs/core/entity/sensor/#available-state-classes
+        return SensorStateClass.MEASUREMENT
 
     @property
     def icon(self):
         """Return a suitable icon for the main sensor."""
         return "mdi:cat"
-
-    @property
-    def unit_of_measurement(self):
-        """Return grams for cat weight."""
-        return "g"
 
     @property
     def baseline_weight(self) -> float | None:
@@ -388,8 +442,8 @@ class CatLitterDetectionSensor(SensorEntity):
 
     @property
     def waste_weight(self) -> float:
-        """
-        The difference in baseline before cat arrived vs. after cat left.
+        """Return the difference in baseline before cat arrived vs. after cat left.
+
         A positive value indicates more mass in the box (i.e. "waste").
         Negative might indicate litter was removed or scattered.
         """
@@ -402,26 +456,31 @@ class CatLitterDetectionSensor(SensorEntity):
 
 
 class CatLitterBaselineSensor(SensorEntity):
-    """
-    A secondary sensor entity that reports the 'baseline weight'
-    from the main cat-litter detection sensor.
+    """A secondary sensor entity that reports the 'baseline weight'.
+
+    This sensor gets its value from the main cat-litter detection sensor.
     """
 
-    def __init__(self, main_sensor: CatLitterDetectionSensor):
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.WEIGHT
+    _attr_translation_key = "baseline"
+
+    def __init__(self, main_sensor: CatLitterDetectionSensor) -> None:
         """Initialize the baseline sensor."""
         self._main_sensor = main_sensor
+        self._attr_unique_id = f"{main_sensor.unique_id}_baseline_sensor"
 
     @property
-    def name(self):
-        """Name this sensor alongside the main sensor name."""
-        return f"{self._main_sensor.name} Baseline"
-
-    @property
-    def state(self):
-        """Return the baseline weight from the main sensor."""
+    def native_value(self) -> float | None:
+        """Return the state of the entity."""
         if self._main_sensor.baseline_weight is None:
             return 0
         return round(self._main_sensor.baseline_weight, 2)
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return unit of mass."""
+        return UnitOfMass.GRAMS
 
     @property
     def icon(self):
@@ -429,36 +488,42 @@ class CatLitterBaselineSensor(SensorEntity):
         return "mdi:scale-balance"
 
     @property
-    def unit_of_measurement(self):
-        """Same unit as the main sensor (grams)."""
-        return "g"
-
-    @property
     def should_poll(self) -> bool:
         """Updates are pushed by the main sensor, so no polling."""
         return False
 
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information for the waste sensor."""
+        return self._main_sensor.device_info
+
 
 class CatLitterDetectionStateSensor(SensorEntity):
-    """
-    A secondary sensor entity that shows the detection state
-    """
+    """A secondary sensor entity that shows the detection state."""
 
-    def __init__(self, main_sensor: CatLitterDetectionSensor):
+    _attr_has_entity_name = True
+    _attr_translation_key = "detection_state"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = [
+        DetectionState.IDLE,
+        DetectionState.WAITING_FOR_CONFIRMATION,
+        DetectionState.CAT_PRESENT,
+        DetectionState.AFTER_CAT,
+    ]
+
+    def __init__(self, main_sensor: CatLitterDetectionSensor) -> None:
         """Initialize the detection-state sensor."""
         self._main_sensor = main_sensor
+        self._attr_unique_id = f"{main_sensor.unique_id}_cat_detection_state"
 
     @property
-    def name(self):
-        return f"{self._main_sensor.name} Detection State"
-
-    @property
-    def state(self):
+    def native_value(self) -> str:
         """Return the internal detection state from the main sensor."""
         return self._main_sensor.detection_state
 
     @property
     def icon(self):
+        """Return an icon for the detection state sensor."""
         return "mdi:radar"
 
     @property
@@ -466,39 +531,49 @@ class CatLitterDetectionStateSensor(SensorEntity):
         """No need to poll—this updates when the main sensor updates."""
         return False
 
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information for the Detection sensor."""
+        return self._main_sensor.device_info
+
 
 class CatLitterWasteSensor(SensorEntity):
-    """
-    A secondary sensor entity that shows the 'waste weight', i.e.
-    the difference in the litter box baseline before vs. after cat visits.
+    """A secondary sensor entity that shows the 'waste weight'.
+
+    This is the difference in the litter box baseline before vs. after cat visits.
     """
 
-    def __init__(self, main_sensor: CatLitterDetectionSensor):
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.WEIGHT
+    _attr_translation_key = "waste_weight"
+
+    def __init__(self, main_sensor: CatLitterDetectionSensor) -> None:
         """Initialize the waste sensor."""
         self._main_sensor = main_sensor
+        self._attr_unique_id = f"{main_sensor.unique_id}_waste"
 
     @property
-    def name(self):
-        return f"{self._main_sensor.name} Waste Weight"
+    def native_value(self) -> float | None:
+        """Return the state of the entity."""
+        if self._main_sensor.waste_weight is None:
+            return 0
+        return round(self._main_sensor.waste_weight, 2)
 
     @property
-    def state(self):
-        """
-        Return the difference between the post-visit baseline
-        and the pre-visit baseline (in grams).
-        """
-        return self._main_sensor.waste_weight
+    def native_unit_of_measurement(self) -> str:
+        """Return unit of mass."""
+        return UnitOfMass.GRAMS
 
     @property
     def icon(self):
         return "mdi:delete-variant"
 
     @property
-    def unit_of_measurement(self):
-        """Same unit as the main sensor (grams)."""
-        return "g"
-
-    @property
     def should_poll(self) -> bool:
         """No polling; event-driven from main sensor."""
         return False
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information for the waste sensor."""
+        return self._main_sensor.device_info

@@ -1,4 +1,21 @@
+
+**⚠️ Breaking Change in v2.0.0**
+>
+> This release introduces a new configuration system using the Home Assistant UI.  
+> **Manual YAML configuration is no longer supported.**
+>
+> **To migrate:**
+> 1. Remove any `cat_scale` configuration from your `configuration.yaml`.
+> 2. Delete the old Cat Scale integration from Home Assistant if it is present.
+> 3. Go to **Settings → Devices & Services → Add Integration → Cat weight tracker** and set up your sensor using the UI.
+>
+> **Why this change?**
+> - The integration now supports full UI configuration, unique IDs, device management, and improved Home Assistant compatibility.
+> - This makes setup easier and enables new features like renaming, device grouping, and long-term statistics.
+>
+> If you have any issues, please check the [issue tracker](https://github.com/djbios/home-assistant-cat-scale/issues) or open a new issue for help.
 # Cat scale integration for Home Assistant
+
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/djbios)
 
 ![CI](https://github.com/djbios/home-assistant-cat-scale/actions/workflows/tests.yml/badge.svg)
@@ -22,17 +39,16 @@ HACS > Integrations > 3 dots > Custom repositories > URL: `djbios/home-assistant
 ![qwe](https://pic.djbios.org/ijo4jd.png)
 
 ## Configuration
-This is the example configuration for the cat scale integration: 
+After installing the integration through HACS, the sensor can be configured through home assistant UI.
+Settings -> Devices & Services -> Add integration -> Cat weight tracker
 
-```yaml
-sensor:
-  - platform: cat_scale
-    name: "Cat weight"
-    source_sensor: sensor.weight_sensor # The entity_id of the weight sensor
-    cat_weight_threshold: 900 # The weight threshold, in grams, to determine if the cat is present
-    min_presence_time: 3 # The minimum time, in seconds, the cat must be present to be considered present
-    leave_timeout: 45 # The time, in seconds, the cat must be absent to be considered gone, or we will assume it's a new baseline (litter added or smth)
-```
+You will be asked for:
+  - **Source sensor**: the weight sensor to be used as source for this integration. Make sure your sensor is of device_type 'weight'
+  - **Cat weight threshold**: The weight threshold, in grams, to determine if the cat is present
+  - **Minimum presence time**: The minimum time, in seconds, the cat must be present to be considered present
+  - **Leave timeout**: The time, in seconds, the cat must be absent to be considered gone, or we will assume it's a new baseline (litter added or smth)
+  - **After-cat standard deviation**: Deviation value used to determine whether a cat left / is present. Default value is usually good enough
+
 Configuration recomendations:
 - `cat_weight_threshold` should be set to the average weight of your cat deducting 20-30%.
 - To set `min_presence_time` use your weight sensor historical data and set it to the average time your cat spends in the litterbox deducting 10-20%.
@@ -95,6 +111,8 @@ sensor:
     clk_pin: D3
     gain: 128
     update_interval: 2s
+    unit_of_measurement: g
+    device_class: weight
     filters:
       - calibrate_linear:
           - 212999 -> 0
