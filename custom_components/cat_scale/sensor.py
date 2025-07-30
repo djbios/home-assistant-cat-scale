@@ -13,10 +13,8 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN, UnitOfMass
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device import async_entity_id_to_device
 from homeassistant.helpers.event import async_track_state_change_event
-from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers import device_registry as dr
 
 from .const import (
     CONF_AFTER_CAT_STANDARD_DEVIATION,
@@ -28,7 +26,6 @@ from .const import (
     DEFAULT_CAT_WEIGHT_THRESHOLD,
     DEFAULT_LEAVE_TIMEOUT,
     DEFAULT_MIN_PRESENCE_TIME,
-    DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,7 +34,8 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
     """Set up sensor(s) from a config entry."""
     # Extract config from entry.options with fallbacks
-    source_sensor = entry.data[CONF_SOURCE_SENSOR]  # this should be in your initial config flow
+    # this should be in your initial config flow
+    source_sensor = entry.data[CONF_SOURCE_SENSOR]
 
     cat_weight_threshold = entry.options.get(
         CONF_CAT_WEIGHT_THRESHOLD,
@@ -112,6 +110,7 @@ class CatLitterDetectionSensor(RestoreSensor):
         self._name = name
         self._source_entity = source_entity
         self._attr_unique_id = f"{source_entity}_cat_detection"
+        self.device_entry = async_entity_id_to_device(hass, source_entity)
 
         # Configurable parameters
         self._threshold = cat_weight_threshold
@@ -370,40 +369,6 @@ class CatLitterDetectionSensor(RestoreSensor):
                 )
 
     @property
-    def device_info(self):
-        """Return device information for the cat litter detection sensor.
-
-        This method attempts to merge device info with the source sensor's device,
-        so that entities are grouped together in the device registry.
-        """
-        entity_reg = er.async_get(self._hass)
-        device_reg = dr.async_get(self._hass)
-        if entity_reg and device_reg:
-            if entry := entity_reg.async_get(self._source_entity):
-                if entry.device_id and (device := device_reg.async_get(entry.device_id)):
-                    # Use all information from source sensor device
-                    # Such that our entities will me merged with the scale device
-                    return DeviceInfo(
-                        identifiers=device.identifiers,
-                        connections=device.connections,
-                        manufacturer=device.manufacturer,
-                        model=device.model,
-                        name=device.name,
-                        sw_version=device.sw_version,
-                        hw_version=device.hw_version,
-                        serial_number=device.serial_number,
-                        configuration_url=device.configuration_url,
-                        suggested_area=device.suggested_area,
-                        entry_type=device.entry_type,
-                    )
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._source_entity)},
-            name="Cat weight",
-            manufacturer="Weight sensor for ordinary Cat litterbox",
-            model="Smart Litter Box",
-        )
-
-    @property
     def native_value(self) -> float | None:
         """Return the state of the entity."""
         # Using native value and native unit of measurement, allows you to change units
@@ -469,6 +434,7 @@ class CatLitterBaselineSensor(SensorEntity):
         """Initialize the baseline sensor."""
         self._main_sensor = main_sensor
         self._attr_unique_id = f"{main_sensor.unique_id}_baseline_sensor"
+        self.device_entry = main_sensor.device_entry
 
     @property
     def native_value(self) -> float | None:
@@ -492,11 +458,6 @@ class CatLitterBaselineSensor(SensorEntity):
         """Updates are pushed by the main sensor, so no polling."""
         return False
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information for the waste sensor."""
-        return self._main_sensor.device_info
-
 
 class CatLitterDetectionStateSensor(SensorEntity):
     """A secondary sensor entity that shows the detection state."""
@@ -515,6 +476,7 @@ class CatLitterDetectionStateSensor(SensorEntity):
         """Initialize the detection-state sensor."""
         self._main_sensor = main_sensor
         self._attr_unique_id = f"{main_sensor.unique_id}_cat_detection_state"
+        self.device_entry = main_sensor.device_entry
 
     @property
     def native_value(self) -> str:
@@ -531,11 +493,6 @@ class CatLitterDetectionStateSensor(SensorEntity):
         """No need to poll—this updates when the main sensor updates."""
         return False
 
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information for the Detection sensor."""
-        return self._main_sensor.device_info
-
 
 class CatLitterWasteSensor(SensorEntity):
     """A secondary sensor entity that shows the 'waste weight'.
@@ -551,6 +508,7 @@ class CatLitterWasteSensor(SensorEntity):
         """Initialize the waste sensor."""
         self._main_sensor = main_sensor
         self._attr_unique_id = f"{main_sensor.unique_id}_waste"
+        self.device_entry = main_sensor.device_entry
 
     @property
     def native_value(self) -> float | None:
@@ -572,8 +530,3 @@ class CatLitterWasteSensor(SensorEntity):
     def should_poll(self) -> bool:
         """No polling; event-driven from main sensor."""
         return False
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return device information for the waste sensor."""
-        return self._main_sensor.device_info
