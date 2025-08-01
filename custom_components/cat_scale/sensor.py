@@ -83,6 +83,7 @@ class DetectionState:
     WAITING_FOR_CONFIRMATION = "waiting_for_confirmation"
     CAT_PRESENT = "cat_present"
     AFTER_CAT = "after_cat"
+    CLEANING = "cleaning"
 
 
 class CatLitterDetectionSensor(RestoreSensor):
@@ -122,6 +123,7 @@ class CatLitterDetectionSensor(RestoreSensor):
         # Keep recent readings, mostly for debugging or if you need them later
         # Format: deque of (timestamp, weight)
         self._recent_readings = deque()
+        self._recent_presence_readings = deque()
 
         # Final reported state: last successfully detected cat weight
         self._state = None
@@ -272,6 +274,7 @@ class CatLitterDetectionSensor(RestoreSensor):
                     event_time,
                     self._baseline_weight,
                 )
+                self._recent_presence_readings.append(current_weight)
             elif self._recent_readings:
                 # If presumably empty, we can adjust the baseline slowly or with a simple average
                 median = statistics.median(r[1] for r in self._recent_readings)
@@ -281,10 +284,12 @@ class CatLitterDetectionSensor(RestoreSensor):
                     self._name,
                     self._baseline_weight,
                 )
+                # TODO: empty queue recent presence
 
         elif self._detection_state == DetectionState.WAITING_FOR_CONFIRMATION:
             if current_weight >= trigger_level:
                 self._peak_weight = max(self._peak_weight, current_weight)
+                self._recent_presence_readings.append(current_weight)
                 # If we have stayed above threshold long enough, confirm cat
                 if (event_time - self._cat_arrived_time) >= self._min_presence_time:
                     self._cat_confirmed_time = event_time
@@ -310,6 +315,9 @@ class CatLitterDetectionSensor(RestoreSensor):
                 self._baseline_weight = current_weight
                 self._recent_readings.clear()
                 self._peak_weight = 0
+
+                # TODO: empty queue recent presence
+                # TODO: This is how far we came
 
         elif self._detection_state == DetectionState.CAT_PRESENT:
             if current_weight >= trigger_level:
