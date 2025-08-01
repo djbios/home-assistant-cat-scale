@@ -134,7 +134,6 @@ class CatLitterDetectionSensor(RestoreSensor):
         # Timestamps and values for detection logic
         self._cat_arrived_time = None
         self._cat_confirmed_time = None
-        self._peak_weight = 0
 
         # Baseline weight. Updated when returning to IDLE or first above threshold, etc.
         self._baseline_weight = None
@@ -274,6 +273,7 @@ class CatLitterDetectionSensor(RestoreSensor):
                     event_time,
                     self._baseline_weight,
                 )
+                self._recent_presence_readings.clear()
                 self._recent_presence_readings.append(current_weight)
             elif self._recent_readings:
                 # If presumably empty, we can adjust the baseline slowly or with a simple average
@@ -284,21 +284,17 @@ class CatLitterDetectionSensor(RestoreSensor):
                     self._name,
                     self._baseline_weight,
                 )
-                # TODO: empty queue recent presence
 
         elif self._detection_state == DetectionState.WAITING_FOR_CONFIRMATION:
             if current_weight >= trigger_level:
-                self._peak_weight = max(self._peak_weight, current_weight)
                 self._recent_presence_readings.append(current_weight)
                 # If we have stayed above threshold long enough, confirm cat
                 if (event_time - self._cat_arrived_time) >= self._min_presence_time:
                     self._cat_confirmed_time = event_time
-                    self._peak_weight = current_weight
                     self._detection_state = DetectionState.CAT_PRESENT
                     _LOGGER.debug(
-                        "%s: Cat presence confirmed. peak_weight=%.2f, time=%s",
+                        "%s: Cat presence confirmed. time=%s",
                         self._name,
-                        self._peak_weight,
                         event_time,
                     )
             else:
@@ -314,15 +310,12 @@ class CatLitterDetectionSensor(RestoreSensor):
                 self._detection_state = DetectionState.IDLE
                 self._baseline_weight = current_weight
                 self._recent_readings.clear()
-                self._peak_weight = 0
-
-                # TODO: empty queue recent presence
-                # TODO: This is how far we came
+                self._recent_presence_readings.clear()
 
         elif self._detection_state == DetectionState.CAT_PRESENT:
             if current_weight >= trigger_level:
-                # Cat still present: update peak if needed
-                self._peak_weight = max(self._peak_weight, current_weight)
+                # Cat still present: add weight
+                self._recent_presence_readings.append(current_weight)
 
                 # Check if we've exceeded leave_timeout
                 if (event_time - self._cat_confirmed_time) > self._leave_timeout:
@@ -334,10 +327,15 @@ class CatLitterDetectionSensor(RestoreSensor):
                     self._detection_state = DetectionState.IDLE
                     self._baseline_weight = current_weight
                     self._recent_readings.clear()
+                    self._recent_presence_readings.clear()
             else:
                 # Cat left: finalize cat weight
-                detected_cat_weight = self._peak_weight - self._baseline_weight
-                self._peak_weight = 0
+                if self._recent_presence_readings:
+                    median_weight = statistics.median(self._recent_presence_readings)
+                else:
+                    median_weight = current_weight  # fallback
+
+                detected_cat_weight = median_weight - self._baseline_weight
                 if detected_cat_weight < 0:
                     _LOGGER.debug(
                         "%s: Negative cat weight (%.2f). Forcing to 0. Possibly sensor drift/noise",
@@ -348,15 +346,18 @@ class CatLitterDetectionSensor(RestoreSensor):
 
                 self._state = round(detected_cat_weight, 2)
                 _LOGGER.debug(
-                    "%s: Cat event recognized. baseline=%.2f, peak=%.2f, final=%.2f",
+                    "%s: Cat event recognized. baseline=%.2f, median=%.2f, final=%.2f, presence_values=%s",
                     self._name,
                     self._baseline_weight,
-                    self._peak_weight,
+                    median_weight,
+                    detected_cat_weight,
                     self._state,
+                    list(self._recent_presence_readings),
                 )
 
                 self._detection_state = DetectionState.AFTER_CAT
                 self._recent_readings.clear()
+                self._recent_presence_readings.clear()
                 self._add_reading(current_weight, event_time)
 
         elif self._detection_state == DetectionState.AFTER_CAT:
