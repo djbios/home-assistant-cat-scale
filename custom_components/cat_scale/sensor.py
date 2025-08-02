@@ -352,7 +352,7 @@ class CatLitterDetectionSensor(RestoreSensor):
                     median_weight,
                     detected_cat_weight,
                     self._state,
-                    list(self._recent_presence_readings),
+                    ",".join(map(str, self._recent_presence_readings)),
                 )
 
                 self._detection_state = DetectionState.AFTER_CAT
