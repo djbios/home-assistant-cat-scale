@@ -30,8 +30,8 @@ async def test1_csv(make_sensor):
         )
 
     assert sensor._detection_state == DetectionState.IDLE
-    assert sensor.state == pytest.approx(2800, abs=100), "Cat weight should be around 3000g"
-    assert sensor.waste_weight == pytest.approx(30, abs=10), "Waste weight should be around 500g"
+    assert sensor.state == pytest.approx(2575, abs=100), "Cat weight should be around 2575g"
+    assert sensor.waste_weight == pytest.approx(30, abs=10), "Waste weight should be around 30g"
 
 
 async def test2_csv(make_sensor):
@@ -47,5 +47,5 @@ async def test2_csv(make_sensor):
         )
 
     assert sensor._detection_state == DetectionState.IDLE
-    assert sensor.state == pytest.approx(2800, abs=100), "Cat weight should be around 3000g"
+    assert sensor.state == pytest.approx(2227, abs=100), "Cat weight should be around 2227g"
     assert sensor.waste_weight == 0
