@@ -83,7 +83,6 @@ class DetectionState:
     WAITING_FOR_CONFIRMATION = "waiting_for_confirmation"
     CAT_PRESENT = "cat_present"
     AFTER_CAT = "after_cat"
-    CLEANING = "cleaning"
 
 
 class CatLitterDetectionSensor(RestoreSensor):
