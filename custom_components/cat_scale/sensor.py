@@ -251,7 +251,6 @@ class CatLitterDetectionSensor(RestoreSensor):
 
         # Threshold is baseline + cat_weight_threshold
         trigger_level = self._baseline_weight + self._threshold
-
         _LOGGER.debug(
             "%s: Evaluate detection. State=%s, curr=%.2f, baseline=%.2f, threshold=%.2f",
             self._name,
@@ -344,12 +343,12 @@ class CatLitterDetectionSensor(RestoreSensor):
                     detected_cat_weight = 0
 
                 self._state = round(detected_cat_weight, 2)
+
                 _LOGGER.debug(
                     "%s: Cat event recognized. baseline=%.2f, median=%.2f, final=%.2f, presence_values=%s",
                     self._name,
                     self._baseline_weight,
                     median_weight,
-                    detected_cat_weight,
                     self._state,
                     ",".join(map(str, self._recent_presence_readings)),
                 )
