@@ -136,9 +136,6 @@ async def test_cat_left_no_presence_readings_fallback(make_sensor):
         event = FakeEvent(state, ts)
         sensor._handle_source_sensor_state_event(event)
 
-    # No detection, but fallback branch is exercised
-    # (You may need to tweak min_time or logic to force this branch)
-    # Here, just ensure no exception and state is None or 0
     assert sensor.state is None or sensor.state == 0
 
 
