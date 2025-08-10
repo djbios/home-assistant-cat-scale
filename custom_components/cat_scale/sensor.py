@@ -347,12 +347,11 @@ class CatLitterDetectionSensor(RestoreSensor):
                 self._state = round(detected_cat_weight, 2)
 
                 _LOGGER.debug(
-                    "%s: Cat event recognized. baseline=%.2f, median=%.2f, final=%.2f, presence_values=%s",
+                    "%s: Cat event recognized. baseline=%.2f, median=%.2f, final=%.2f",
                     self._name,
                     self._baseline_weight,
                     median_weight,
                     self._state,
-                    ",".join(map(str, self._recent_presence_readings)),
                 )
 
                 self._detection_state = DetectionState.AFTER_CAT

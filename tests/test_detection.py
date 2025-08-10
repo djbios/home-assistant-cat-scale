@@ -96,13 +96,20 @@ async def test_noisy_baseline_no_events(make_sensor):
 
 async def test_cat_present_timeout_resets_to_idle(make_sensor):
     """Cat stays present longer than leave_timeout, triggers reset to IDLE."""
-    sensor = await make_sensor(threshold=50, min_time=2, leave_time=3)
+    sensor = await make_sensor(threshold=50, min_time=2, leave_time=20)
     base_wt = 500.0
     cat_delta = 60.0
     start_time = datetime.now()
 
-    # Cat arrives at t=0, stays above threshold for 10 seconds (leave_timeout=3)
-    readings = [(start_time + timedelta(seconds=i), base_wt + cat_delta) for i in range(10)]
+    # Cat arrives at t=0, stays above threshold for 10 seconds (leave_timeout=20)
+    # First, let baseline settle for 5 seconds
+    baseline_readings = [(start_time + timedelta(seconds=i), base_wt) for i in range(5)]
+    # Then, cat present for 30 seconds (above threshold)
+    cat_readings = [
+        (start_time + timedelta(seconds=len(baseline_readings) + i), base_wt + cat_delta)
+        for i in range(30)
+    ]
+    readings = baseline_readings + cat_readings
     for ts, w in readings:
         state = FakeState(str(w), ts)
         event = FakeEvent(state, ts)
