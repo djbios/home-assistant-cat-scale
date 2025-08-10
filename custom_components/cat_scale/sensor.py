@@ -123,9 +123,8 @@ class CatLitterDetectionSensor(RestoreSensor):
         # Format: deque of (timestamp, weight)
         self._recent_readings = deque()
 
-        # Max pollingrate of hx711 is 10hz, so max 10 readings per second, for period cat_present, times 30 to have plenty of space.
-        max_presence_readings: int = 10 * self._leave_timeout.total_seconds() * 30
-        self._recent_presence_readings: deque = deque(maxlen=max_presence_readings)
+        # Max pollingrate of hx711 is 10hz, with an hour of cat presence
+        self._recent_presence_readings: deque = deque(maxlen=3600 * 10)
 
         # Final reported state: last successfully detected cat weight
         self._state = None
