@@ -273,7 +273,11 @@ class CatLitterDetectionSensor(RestoreSensor):
                     event_time,
                     self._baseline_weight,
                 )
-                self._recent_presence_readings.clear()
+                if len(self._recent_presence_readings) > 0:
+                    _LOGGER.error(
+                        "Presence readings weren't properly cleared. Please open an issue with the developers of the cat scale integration to inform them of the occurence of this error on https://github.com/djbios/home-assistant-cat-scale/issues."
+                    )
+                    self._recent_presence_readings.clear()
                 self._recent_presence_readings.append(current_weight)
             elif self._recent_readings:
                 # If presumably empty, we can adjust the baseline slowly or with a simple average
