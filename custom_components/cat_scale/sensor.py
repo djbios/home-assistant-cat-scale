@@ -275,7 +275,7 @@ class CatLitterDetectionSensor(RestoreSensor):
                 )
                 if len(self._recent_presence_readings) > 0:
                     _LOGGER.error(
-                        "Presence readings weren't properly cleared. Please open an issue with the developers of the cat scale integration to inform them of the occurence of this error on https://github.com/djbios/home-assistant-cat-scale/issues."
+                        "Presence readings were not cleared as expected. This may indicate a bug in the cat scale integration. Please report this issue at https://github.com/djbios/home-assistant-cat-scale/issues and include relevant logs."
                     )
                     self._recent_presence_readings.clear()
                 self._recent_presence_readings.append(current_weight)
