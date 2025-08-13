@@ -5,7 +5,7 @@ Pytest suite for Cat Scale Integration.
 import pytest
 import random
 from datetime import datetime, timedelta
-
+from collections import deque
 
 from custom_components.cat_scale.sensor import DetectionState
 from tests.test_data.utils import FakeState, FakeEvent
@@ -92,6 +92,51 @@ async def test_noisy_baseline_no_events(make_sensor):
     assert sensor.state is None
     # baseline ~ 500, allow some margin
     assert sensor.baseline_weight == pytest.approx(500, abs=10)
+
+
+async def test_cat_present_timeout_resets_to_idle(make_sensor):
+    """Cat stays present longer than leave_timeout, triggers reset to IDLE."""
+    sensor = await make_sensor(threshold=50, min_time=2, leave_time=20)
+    base_wt = 500.0
+    cat_delta = 60.0
+    start_time = datetime.now()
+
+    # Cat arrives at t=0, stays above threshold for 10 seconds (leave_timeout=20)
+    # First, let baseline settle for 5 seconds
+    baseline_readings = [(start_time + timedelta(seconds=i), base_wt) for i in range(5)]
+    # Then, cat present for 30 seconds (above threshold)
+    cat_readings = [
+        (start_time + timedelta(seconds=len(baseline_readings) + i), base_wt + cat_delta)
+        for i in range(30)
+    ]
+    readings = baseline_readings + cat_readings
+    for ts, w in readings:
+        state = FakeState(str(w), ts)
+        event = FakeEvent(state, ts)
+        sensor._handle_source_sensor_state_event(event)
+
+    # After leave_timeout, sensor should reset to IDLE and clear readings
+    assert sensor._detection_state == DetectionState.IDLE
+    assert sensor._recent_presence_readings == deque()
+
+
+async def test_cat_left_no_presence_readings_fallback(make_sensor):
+    """If no presence readings, fallback to current_weight for median."""
+    sensor = await make_sensor(threshold=50, min_time=2, leave_time=30)
+    base_wt = 500.0
+    start_time = datetime.now()
+
+    # Simulate: Cat arrives and leaves in one step (never above threshold long enough)
+    readings = [
+        (start_time, base_wt + 60),  # above threshold
+        (start_time + timedelta(seconds=1), base_wt),  # immediately below
+    ]
+    for ts, w in readings:
+        state = FakeState(str(w), ts)
+        event = FakeEvent(state, ts)
+        sensor._handle_source_sensor_state_event(event)
+
+    assert sensor.state is None or sensor.state == 0
 
 
 async def test_cat_come_left_same_baseline(make_sensor):
