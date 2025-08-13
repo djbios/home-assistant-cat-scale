@@ -19,6 +19,7 @@
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/djbios)
 
 ![CI](https://github.com/djbios/home-assistant-cat-scale/actions/workflows/tests.yml/badge.svg)
+[![codecov](https://codecov.io/gh/djbios/home-assistant-cat-scale/graph/badge.svg?token=FMNZKAWIS8)](https://codecov.io/gh/djbios/home-assistant-cat-scale)
 
 <img src="https://pic.djbios.org/r3qe8x.png" alt="drawing" width="400"/>
 
