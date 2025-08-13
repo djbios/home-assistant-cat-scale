@@ -4,7 +4,7 @@ import pathlib
 
 import pytest
 
-from custom_components.cat_scale.sensor import DetectionState
+from custom_components.cat_scale.states import IdleState
 from tests.test_data.utils import FakeState, FakeEvent
 
 pytestmark = pytest.mark.asyncio
@@ -29,7 +29,7 @@ async def test1_csv(make_sensor):
             f"In this sample baseline not changed, so should stay around 5000g {value}"
         )
 
-    assert sensor._detection_state == DetectionState.IDLE
+    assert sensor.detection_state == IdleState.state_key
     assert sensor.state == pytest.approx(2575, abs=100), "Cat weight should be around 2575g"
     assert sensor.waste_weight == pytest.approx(30, abs=10), "Waste weight should be around 30g"
 
@@ -46,6 +46,6 @@ async def test2_csv(make_sensor):
             f"In this sample baseline not changed, so should stay around 5000g {value}"
         )
 
-    assert sensor._detection_state == DetectionState.IDLE
+    assert sensor.detection_state == IdleState.state_key
     assert sensor.state == pytest.approx(2227, abs=100), "Cat weight should be around 2227g"
     assert sensor.waste_weight == 0
