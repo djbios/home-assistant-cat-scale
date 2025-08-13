@@ -5,9 +5,8 @@ Pytest suite for Cat Scale Integration.
 import pytest
 import random
 from datetime import datetime, timedelta
-from collections import deque
 
-from custom_components.cat_scale.sensor import DetectionState
+from custom_components.cat_scale.states import IdleState
 from tests.test_data.utils import FakeState, FakeEvent
 
 TESTS_TOLERANCE = 10
@@ -88,7 +87,7 @@ async def test_noisy_baseline_no_events(make_sensor):
     # - detection_state = IDLE
     # - cat_weight sensor._state = None (no cat recognized)
     # - baseline_weight ~ near 500
-    assert sensor._detection_state == DetectionState.IDLE
+    assert sensor.detection_state == IdleState.state_key
     assert sensor.state is None
     # baseline ~ 500, allow some margin
     assert sensor.baseline_weight == pytest.approx(500, abs=10)
@@ -116,8 +115,8 @@ async def test_cat_present_timeout_resets_to_idle(make_sensor):
         sensor._handle_source_sensor_state_event(event)
 
     # After leave_timeout, sensor should reset to IDLE and clear readings
-    assert sensor._detection_state == DetectionState.IDLE
-    assert sensor._recent_presence_readings == deque()
+    assert sensor.detection_state == IdleState.state_key
+    assert not sensor.state_machine.context.recent_presence_readings
 
 
 async def test_cat_left_no_presence_readings_fallback(make_sensor):
@@ -210,7 +209,7 @@ async def test_baseline_change_down(make_sensor, hass):
 
     # We expect no cat detection, so:
     assert sensor.state is None
-    assert sensor._detection_state == DetectionState.IDLE
+    assert sensor.detection_state == IdleState.state_key
     # We expect final baseline near 490
     assert sensor.baseline_weight == pytest.approx(490.0, 0.1)
 
@@ -243,7 +242,7 @@ async def test_baseline_change_up_less_than_cat(make_sensor, hass):
     # Baseline should end up around 530 if the sensor code picks up that average
     # The sensor's logic might or might not fully adopt the new baseline
     # but we at least expect no cat event recognized.
-    assert sensor._detection_state == DetectionState.IDLE
+    assert sensor.detection_state == IdleState.state_key
 
 
 async def test_cat_come_left_quickly_no_update(make_sensor, hass):
@@ -275,7 +274,7 @@ async def test_cat_come_left_quickly_no_update(make_sensor, hass):
 
     # Cat never meets the min_presence_time=5s, so no detection
     assert sensor.state is None
-    assert sensor._detection_state == DetectionState.IDLE
+    assert sensor.detection_state == IdleState.state_key
 
 
 async def test_cat_come_waste_left_all_sensors(make_sensor, hass):
@@ -320,4 +319,4 @@ async def test_cat_come_waste_left_all_sensors(make_sensor, hass):
     assert sensor.state == pytest.approx(60, 0.1), "Cat weight must be ~60"
     assert sensor.baseline_weight == pytest.approx(515, 0.1), "Baseline should end near 515"
     assert sensor.waste_weight == pytest.approx(15, 0.1), "Waste weight should be ~15"
-    assert sensor._detection_state == DetectionState.IDLE
+    assert sensor.detection_state == IdleState.state_key

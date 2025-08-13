@@ -1,7 +1,5 @@
-from collections import deque
-from datetime import timedelta, datetime
+from datetime import timedelta
 import logging
-import statistics
 
 
 from homeassistant.components.sensor import (
@@ -30,6 +28,7 @@ from .const import (
     DEFAULT_MIN_PRESENCE_TIME,
     DOMAIN,
 )
+from .states import LitterboxStateMachine, IdleState, LitterboxContext, Reading
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,7 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     # Create the main and sub sensors as before
     main_sensor = CatLitterDetectionSensor(
         hass=hass,
-        name=None,
+        name=entry.title,
         source_entity=source_sensor,
         cat_weight_threshold=cat_weight_threshold,
         min_presence_time=min_presence_time,
@@ -74,15 +73,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     main_sensor.register_sub_sensor(waste_sensor)
 
     async_add_entities([main_sensor, baseline_sensor, detection_state_sensor, waste_sensor])
-
-
-class DetectionState:
-    """Simple state constants to keep track of the detection process."""
-
-    IDLE = "idle"
-    WAITING_FOR_CONFIRMATION = "waiting_for_confirmation"
-    CAT_PRESENT = "cat_present"
-    AFTER_CAT = "after_cat"
 
 
 class CatLitterDetectionSensor(RestoreSensor):
@@ -113,34 +103,17 @@ class CatLitterDetectionSensor(RestoreSensor):
         self._source_entity = source_entity
         self._attr_unique_id = f"{source_entity}_cat_detection"
 
-        # Configurable parameters
-        self._threshold = cat_weight_threshold
-        self._min_presence_time = timedelta(seconds=min_presence_time)
-        self._leave_timeout = timedelta(seconds=leave_timeout)
-        self._after_cat_standard_deviation = after_cat_standard_deviation
-
-        # Keep recent readings, mostly for debugging or if you need them later
-        # Format: deque of (timestamp, weight)
-        self._recent_readings: deque[tuple[datetime, float]] = deque()
-
-        # Max pollingrate of hx711 is 10hz, with an hour of cat presence
-        self._recent_presence_readings: deque[float] = deque(maxlen=3600 * 10)
-
-        # Final reported state: last successfully detected cat weight
-        self._state = None
-
-        # Detection state machine
-        self._detection_state = DetectionState.IDLE
-
-        # Timestamps and values for detection logic
-        self._cat_arrived_time = None
-        self._cat_confirmed_time = None
-
-        # Baseline weight. Updated when returning to IDLE or first above threshold, etc.
-        self._baseline_weight = None
-        self._waste_weight = 0.0
-
-        # Store unsubscribe function for the event listener
+        # State machine
+        self.state_machine = LitterboxStateMachine(
+            initial_state=IdleState,
+            initial_context=LitterboxContext(
+                cat_weight_threshold=cat_weight_threshold,
+                min_presence_time=timedelta(seconds=min_presence_time),
+                leave_timeout=timedelta(seconds=leave_timeout),
+                after_cat_standard_deviation=after_cat_standard_deviation,
+                name=name,
+            ),
+        )
         self._unsub_listener = None
 
         # Sub-sensors for baseline, detection state, waste, etc.
@@ -167,8 +140,12 @@ class CatLitterDetectionSensor(RestoreSensor):
         # Restore previous native value if available
         if (last_sensor_data := await self.async_get_last_sensor_data()) is not None:
             try:
-                self._state = float(last_sensor_data.native_value)
-                _LOGGER.debug("%s: Restored native_value to %.2f", self._name, self._state)
+                self.state_machine.force_set_cat_weight(
+                    float(last_sensor_data.native_value)
+                )  # TODO maybe worth it to have sensor state still
+                _LOGGER.debug(
+                    "%s: Restored native_value to %.2f", self._name, self.state_machine.cat_weight
+                )
             except (ValueError, TypeError):
                 _LOGGER.debug(
                     "%s: Could not restore native_value from %s",
@@ -215,171 +192,13 @@ class CatLitterDetectionSensor(RestoreSensor):
         _LOGGER.debug("%s: New weight=%.2f at %s", self._name, weight, event_time)
 
         # Add the reading to our records
-        self._add_reading(weight, event_time)
+        reading = Reading(event_time, weight)
         # Run detection logic
-        self._evaluate_detection(weight, event_time)
+        self.state_machine.process_data(reading)
         # Update the entity state if needed
         self.async_write_ha_state()
         # Also update sub-sensors
         self._update_sub_sensors()
-
-    def _add_reading(self, weight: float, reading_time) -> None:
-        """Add a new reading (weight) with a timestamp, and prune old data."""
-        _LOGGER.debug(
-            "%s: Adding reading -> weight=%.2f, time=%s",
-            self._name,
-            weight,
-            reading_time,
-        )
-        self._recent_readings.append((reading_time, weight))
-        max_keep = timedelta(minutes=5)
-        oldest_allowed = reading_time - max_keep
-
-        while self._recent_readings and self._recent_readings[0][0] < oldest_allowed:
-            popped = self._recent_readings.popleft()
-            _LOGGER.debug("%s: Pruning old reading -> %s", self._name, popped)
-
-    def _evaluate_detection(self, current_weight: float, event_time) -> None:
-        """Core logic to track cat presence and finalize cat weight if needed."""
-        if self._baseline_weight is None:
-            # On very first run, set an initial baseline
-            self._baseline_weight = current_weight
-            _LOGGER.debug(
-                "%s: First reading seen. Setting baseline to %.2f",
-                self._name,
-                self._baseline_weight,
-            )
-            return
-
-        # Threshold is baseline + cat_weight_threshold
-        trigger_level = self._baseline_weight + self._threshold
-        _LOGGER.debug(
-            "%s: Evaluate detection. State=%s, curr=%.2f, baseline=%.2f, threshold=%.2f",
-            self._name,
-            self._detection_state,
-            current_weight,
-            self._baseline_weight,
-            trigger_level,
-        )
-
-        if self._detection_state == DetectionState.IDLE:
-            # If weight is above (baseline + threshold), start waiting
-            if current_weight >= trigger_level:
-                self._cat_arrived_time = event_time
-                self._detection_state = DetectionState.WAITING_FOR_CONFIRMATION
-                _LOGGER.debug(
-                    "%s: -> WAITING_FOR_CONFIRMATION at %s. baseline=%.2f",
-                    self._name,
-                    event_time,
-                    self._baseline_weight,
-                )
-                if len(self._recent_presence_readings) > 0:
-                    _LOGGER.error(
-                        "Presence readings were not cleared as expected. This may indicate a bug in the cat scale integration. Please report this issue at https://github.com/djbios/home-assistant-cat-scale/issues and include relevant logs."
-                    )
-                    self._recent_presence_readings.clear()
-                self._recent_presence_readings.append(current_weight)
-            elif self._recent_readings:
-                # If presumably empty, we can adjust the baseline slowly or with a simple average
-                median = statistics.median(r[1] for r in self._recent_readings)
-                self._baseline_weight = median
-                _LOGGER.debug(
-                    "%s: Updated baseline to average of recent: %.2f",
-                    self._name,
-                    self._baseline_weight,
-                )
-
-        elif self._detection_state == DetectionState.WAITING_FOR_CONFIRMATION:
-            if current_weight >= trigger_level:
-                self._recent_presence_readings.append(current_weight)
-                # If we have stayed above threshold long enough, confirm cat
-                if (event_time - self._cat_arrived_time) >= self._min_presence_time:
-                    self._cat_confirmed_time = event_time
-                    self._detection_state = DetectionState.CAT_PRESENT
-                    _LOGGER.debug(
-                        "%s: Cat presence confirmed. time=%s",
-                        self._name,
-                        event_time,
-                    )
-            else:
-                # Weight fell back below threshold, so reset
-                _LOGGER.debug(
-                    "%s: Weight dropped below trigger (%.2f < %.2f) before confirmation. Reset to IDLE. "
-                    "baseline -> %.2f",
-                    self._name,
-                    current_weight,
-                    trigger_level,
-                    current_weight,
-                )
-                self._detection_state = DetectionState.IDLE
-                self._baseline_weight = current_weight
-                self._recent_readings.clear()
-                self._recent_presence_readings.clear()
-
-        elif self._detection_state == DetectionState.CAT_PRESENT:
-            if current_weight >= trigger_level:
-                # Cat still present: add weight
-                self._recent_presence_readings.append(current_weight)
-
-                # Check if we've exceeded leave_timeout
-                if (event_time - self._cat_confirmed_time) > self._leave_timeout:
-                    _LOGGER.debug(
-                        "%s: Cat presence took too long. Discarding event. baseline -> %.2f, clearing readings",
-                        self._name,
-                        current_weight,
-                    )
-                    self._detection_state = DetectionState.IDLE
-                    self._baseline_weight = current_weight
-                    self._recent_readings.clear()
-                    self._recent_presence_readings.clear()
-            else:
-                # Cat left: finalize cat weight
-                if self._recent_presence_readings:
-                    median_weight = statistics.median(self._recent_presence_readings)
-                else:
-                    median_weight = current_weight  # fallback
-
-                detected_cat_weight = median_weight - self._baseline_weight
-                if detected_cat_weight < 0:
-                    _LOGGER.debug(
-                        "%s: Negative cat weight (%.2f). Forcing to 0. Possibly sensor drift/noise",
-                        self._name,
-                        detected_cat_weight,
-                    )
-                    detected_cat_weight = 0
-
-                self._state = round(detected_cat_weight, 2)
-
-                _LOGGER.debug(
-                    "%s: Cat event recognized. baseline=%.2f, median=%.2f, final=%.2f",
-                    self._name,
-                    self._baseline_weight,
-                    median_weight,
-                    self._state,
-                )
-
-                self._detection_state = DetectionState.AFTER_CAT
-                self._recent_readings.clear()
-                self._recent_presence_readings.clear()
-                self._add_reading(current_weight, event_time)
-
-        elif self._detection_state == DetectionState.AFTER_CAT:
-            self._add_reading(current_weight, event_time)
-            stand_dev = statistics.stdev(r[1] for r in self._recent_readings)
-
-            if (
-                stand_dev <= self._after_cat_standard_deviation and len(self._recent_readings) >= 5
-            ):  # TODO magic numbers
-                self._detection_state = DetectionState.IDLE
-                self._waste_weight = max(current_weight - self._baseline_weight, 0)
-                self._baseline_weight = current_weight
-                self._recent_readings.clear()
-                _LOGGER.debug(
-                    "%s: Finished cat event. baseline=%.2f, waste=%.2f",
-                    self._name,
-                    current_weight,
-                    self._waste_weight,
-                )
 
     @property
     def device_info(self):
@@ -420,7 +239,7 @@ class CatLitterDetectionSensor(RestoreSensor):
         """Return the state of the entity."""
         # Using native value and native unit of measurement, allows you to change units
         # in Lovelace and HA will automatically calculate the correct value.
-        return float(self._state) if self._state is not None else None
+        return self.state_machine.cat_weight
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -445,21 +264,17 @@ class CatLitterDetectionSensor(RestoreSensor):
     @property
     def baseline_weight(self) -> float | None:
         """Expose the baseline weight for sub-sensors to use."""
-        return self._baseline_weight
+        return self.state_machine.baseline_weight
 
     @property
     def detection_state(self) -> str:
         """Expose the internal detection state for sub-sensors to use."""
-        return self._detection_state
+        return self.state_machine.state.state_key
 
     @property
     def waste_weight(self) -> float:
-        """Return the difference in baseline before cat arrived vs. after cat left.
-
-        A positive value indicates more mass in the box (i.e. "waste").
-        Negative might indicate litter was removed or scattered.
-        """
-        return self._waste_weight
+        """Return the difference in baseline before cat arrived vs. after cat left."""
+        return self.state_machine.waste_weight
 
     @property
     def should_poll(self) -> bool:
@@ -516,12 +331,7 @@ class CatLitterDetectionStateSensor(SensorEntity):
     _attr_has_entity_name = True
     _attr_translation_key = "detection_state"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = [
-        DetectionState.IDLE,
-        DetectionState.WAITING_FOR_CONFIRMATION,
-        DetectionState.CAT_PRESENT,
-        DetectionState.AFTER_CAT,
-    ]
+    _attr_options = [s.state_key for s in LitterboxStateMachine.get_all_states()]
 
     def __init__(self, main_sensor: CatLitterDetectionSensor) -> None:
         """Initialize the detection-state sensor."""
