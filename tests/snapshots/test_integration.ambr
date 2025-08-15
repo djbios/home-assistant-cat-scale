@@ -3,13 +3,13 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'device_class': 'weight',
-      'friendly_name': 'Cat weight Cat weight',
+      'friendly_name': 'Cat weight',
       'icon': 'mdi:cat',
       'state_class': <SensorStateClass.MEASUREMENT: 'measurement'>,
       'unit_of_measurement': <UnitOfMass.GRAMS: 'g'>,
     }),
     'context': <ANY>,
-    'entity_id': 'sensor.cat_weight_cat_weight',
+    'entity_id': 'sensor.cat_weight',
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,
@@ -20,12 +20,12 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'device_class': 'weight',
-      'friendly_name': 'Cat weight Baseline',
+      'friendly_name': 'Baseline',
       'icon': 'mdi:scale-balance',
       'unit_of_measurement': <UnitOfMass.GRAMS: 'g'>,
     }),
     'context': <ANY>,
-    'entity_id': 'sensor.cat_weight_baseline',
+    'entity_id': 'sensor.baseline',
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,
@@ -36,7 +36,7 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'device_class': 'enum',
-      'friendly_name': 'Cat weight Detection state',
+      'friendly_name': 'Detection state',
       'icon': 'mdi:radar',
       'options': list([
         'idle',
@@ -46,7 +46,7 @@
       ]),
     }),
     'context': <ANY>,
-    'entity_id': 'sensor.cat_weight_detection_state',
+    'entity_id': 'sensor.detection_state',
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,
@@ -57,12 +57,12 @@
   StateSnapshot({
     'attributes': ReadOnlyDict({
       'device_class': 'weight',
-      'friendly_name': 'Cat weight Waste weight',
+      'friendly_name': 'Waste weight',
       'icon': 'mdi:delete-variant',
       'unit_of_measurement': <UnitOfMass.GRAMS: 'g'>,
     }),
     'context': <ANY>,
-    'entity_id': 'sensor.cat_weight_waste_weight',
+    'entity_id': 'sensor.waste_weight',
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,
