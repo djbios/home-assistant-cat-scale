@@ -18,6 +18,8 @@
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/djbios)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=djbios&repository=home-assistant-cat-scale&category=integration)
+
 ![CI](https://github.com/djbios/home-assistant-cat-scale/actions/workflows/tests.yml/badge.svg)
 [![codecov](https://codecov.io/gh/djbios/home-assistant-cat-scale/graph/badge.svg?token=FMNZKAWIS8)](https://codecov.io/gh/djbios/home-assistant-cat-scale)
 
