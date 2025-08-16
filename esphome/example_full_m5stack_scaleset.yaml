@@ -1,0 +1,137 @@
+esphome:
+  name: catscale
+  friendly_name: catscale
+
+esp32:
+  board: esp32-c6-devkitm-1
+  variant: esp32c6
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+web_server:
+  port: 80
+  auth:
+    username: !secret web_server_username
+    password: !secret web_server_password
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+  - platform: web_server
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "catscale backup wifi"
+    password: !secret wifi_backup_ap_password
+
+captive_portal:
+
+# Enables the scale to also function as bluetooth proxy
+bluetooth_proxy:
+  active: true
+
+binary_sensor:
+  - platform: gpio
+    name: "Button"
+    id: m5stack_button
+    pin:
+      number: GPIO9
+      inverted: true
+
+button:
+  - platform: safe_mode
+    name: "Safe Mode Boot"
+    entity_category: diagnostic
+    id: catscale_safe_mode_boot
+
+# Configuration of M5 Atom Lite onboard RGB LED
+light:
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    pin: GPIO20
+    num_leds: 1
+    chipset: WS2812
+    is_rgbw: true
+    id: m5stack_led
+    name: "Light"
+    icon: "mdi:led-outline"
+    effects:
+      - random:
+      - flicker:
+      - addressable_rainbow:
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+  - platform: hx711
+    name: "Cat Weight Sensor"
+    dout_pin: GPIO32
+    clk_pin: GPIO26
+
+    gain: 128
+    update_interval: 1s
+    unit_of_measurement: g
+    device_class: weight
+    accuracy_decimals: 0
+    filters:
+      - calibrate_linear:
+          - 148937 -> 0 # TODO: Add your calibration values here!
+          - 2055181 -> 73900 # TODO: Add your calibration values here!
+      - clamp:
+          min_value: -10000
+          max_value: 200000
+          ignore_out_of_range: true
+  - platform: uptime
+    type: seconds
+    name: Uptime Sensor
+    entity_category: diagnostic
+  - platform: internal_temperature
+    entity_category: diagnostic
+    name: "Internal Temperature"
+
+switch:
+  - platform: factory_reset
+    name: "Restart with Factory Default Settings"
+    entity_category: "diagnostic"
+
+  - platform: restart
+    name: "Restart"
+
+  - platform: gpio
+    pin: GPIO7
+    name: "on board LED"
+
+  - platform: gpio
+    pin: GPIO19
+    name: "RGB on/off"
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "My IP Address"
+      id: catscale_my_ip_address
+    mac_address:
+      name: "My Mac Wifi Address"
+      id: catscale_my_mac_wifi_address
+    ssid:
+      name: "Connected SSID"
+      id: catscale_connected_ssid
+    bssid:
+      name: "Connected BSSID"
+      id: catscale_connected_bssid
+    dns_address:
+      name: "DNS Address"
+      id: catscale_dns_address
