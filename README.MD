@@ -96,7 +96,7 @@ You will need:
 
 The simplest way is to use an HX711 amplifier and a load cell connected to an ESP8266/ESP32 running ESPHome.
 
-For a more complete esphome configuration, see our complete [example configuration](./esphome/example_m5stack_scaleset.yaml).
+For a more complete esphome configuration, see our complete [example configuration](./esphome/example_full_m5stack_scaleset.yaml).
 
 > ⚠️ **Calibration is critical:** Be sure to calibrate your sensor for accurate results. See the [ESPHome documentation](https://esphome.io/components/sensor/hx711.html) for details. This can be done with the `calibrate_linear` values.
 
