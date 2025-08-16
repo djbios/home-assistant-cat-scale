@@ -1,19 +1,3 @@
-
-**⚠️ Breaking Change in v2.0.0**
->
-> This release introduces a new configuration system using the Home Assistant UI.  
-> **Manual YAML configuration is no longer supported.**
->
-> **To migrate:**
-> 1. Remove any `cat_scale` configuration from your `configuration.yaml`.
-> 2. Delete the old Cat Scale integration from Home Assistant if it is present.
-> 3. Go to **Settings → Devices & Services → Add Integration → Cat weight tracker** and set up your sensor using the UI.
->
-> **Why this change?**
-> - The integration now supports full UI configuration, unique IDs, device management, and improved Home Assistant compatibility.
-> - This makes setup easier and enables new features like renaming, device grouping, and long-term statistics.
->
-> If you have any issues, please check the [issue tracker](https://github.com/djbios/home-assistant-cat-scale/issues) or open a new issue for help.
 # Cat scale integration for Home Assistant
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=djbios&repository=home-assistant-cat-scale&category=integration)
@@ -32,17 +16,26 @@ This will allow you to monitor your cat's health and be alerted to any potential
 
 ## Installation
 
-### Manual
-Copy the `custom_components/cat_scale` folder to your Home Assistant `custom_components` folder.
+### HACS (Recommended)
+This integration is available in the [default HACS repository](https://hacs.xyz/).  
+To install:
 
-### HACS
-Use the following link:
+1. Go to **Settings → Devices & Services → Add Integration → Cat weight tracker** in Home Assistant, or open HACS from the sidebar.
+2. In HACS, search for **Cat scale** under Integrations.
+3. Click **Install**.
+4. Restart Home Assistant if prompted.
+
+You can also use the button below to open the repository directly in HACS:
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=djbios&repository=home-assistant-cat-scale&category=integration)
 
-or search in HACS for cat scale
-HACS > Integrations > 3 dots > Custom repositories > URL: `djbios/home-assistant-cat-scale`, Category: Integration > Add > wait > Search "cat scale" > Install
-![HACS](https://pic.djbios.org/yjf622.gif)
+### Manual
+If you prefer manual installation:
+
+1. Copy the `custom_components/cat_scale` folder to your Home Assistant `custom_components` directory.
+2. Restart Home Assistant.
+
+> **Note:** Manual installation is not recommended unless you have a specific need.
 
 ### Dashboard example
 ![qwe](https://pic.djbios.org/ijo4jd.png)
@@ -55,12 +48,12 @@ You will be asked for:
   - **Source sensor**: the weight sensor to be used as source for this integration. Make sure your sensor is of device_type 'weight'
   - **Cat weight threshold**: The weight threshold, in grams, to determine if the cat is present
   - **Minimum presence time**: The minimum time, in seconds, the cat must be present to be considered present
-  - **Leave timeout**: The time, in seconds, the cat must be absent to be considered gone, or we will assume it's a new baseline (litter added or smth)
+  - **Leave timeout**: The time, in seconds, the cat must be absent to be considered gone, or we will assume it's a new baseline (litter added or something)
   - **After-cat standard deviation**: Deviation value used to determine whether a cat left / is present. Default value is usually good enough
 
-Configuration recomendations:
-- `cat_weight_threshold` should be set to the average weight of your cat deducting 20-30%.
-- To set `min_presence_time` use your weight sensor historical data and set it to the average time your cat spends in the litterbox deducting 10-20%.
+Configuration recommendations:
+- `cat_weight_threshold` should be set to the average weight of your cat subtracting 20-30%.
+- To set `min_presence_time` use your weight sensor historical data and set it to the average time your cat spends in the litterbox subtracting 10-20%.
 - `leave_timeout` depends on your cat's behavior, if your cat is often in and out of the litterbox, you should set it to a higher value.
 
 ## Algorithm Overview
@@ -94,45 +87,68 @@ The difference is the “waste weight,” i.e., how much extra mass ended up in 
 
 
 ## Hardware
-Basically, all you need is a weight sensor under the litterbox and a microcontroller to read the sensor and send the data to Home Assistant.
-The simplest way to do this is to use an HX711 amplifier and a load cell/cells connected to an ESP8266/ESP32 microcontroller via ESPHome.
-Here is an example of the ESPHome configuration:
+
+You will need:
+- **Weight sensor(s):** e.g., [M5stack scales kit](https://docs.m5stack.com/en/app/scales_kit)  
+  *Note: This kit may not be accurate for lightweight cats. For small cats, consider a higher-sensitivity load cell with less capacity (these are 200kg total).*
+- **Microcontroller:** e.g., [M5stack esp32-c6](https://docs.m5stack.com/en/core/M5NanoC6) or any ESP8266/ESP32 compatible with ESPHome
+- **Stable power supply**
+
+The simplest way is to use an HX711 amplifier and a load cell connected to an ESP8266/ESP32 running ESPHome.
+
+For a more complete esphome configuration, see our complete [example configuration](./esphome/example_m5stack_scaleset.yaml).
+
+> ⚠️ **Calibration is critical:** Be sure to calibrate your sensor for accurate results. See the [ESPHome documentation](https://esphome.io/components/sensor/hx711.html) for details. This can be done with the `calibrate_linear` values.
+
+Feel free to open an [issue](https://github.com/djbios/home-assistant-cat-scale/issues) or PR if you have recommendations for the ESPHome configuration!
 
 ```yaml
 esphome:
-  name: litterbox
+  name: catscale
+  friendly_name: Cat-scale
 
-esp8266:
-  board: d1_mini
+esp32:
+  board: esp32-c6-devkitm-1
+  variant: esp32c6
+  framework:
+    type: esp-idf
 
 # Enable Home Assistant API
 api:
-  password: ""
+  encryption:
+    key: !secret encryption_key
 
 wifi:
-  ssid: "MyWIFI"
-  password: "123qweasdzxc"
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
 
 sensor:
   - platform: hx711
     name: "Cat Weight Sensor"
-    dout_pin: D1
-    clk_pin: D3
+    dout_pin: GPIO32
+    clk_pin: GPIO26
+
     gain: 128
-    update_interval: 2s
+    update_interval: 1s
     unit_of_measurement: g
     device_class: weight
+    accuracy_decimals: 0
     filters:
       - calibrate_linear:
-          - 212999 -> 0
-          - 269866 -> 2100
-          - 413236 -> 7800
-      
+          - 148937 -> 0 # Add own calibration here!
+          - 2055181 -> 73900 # Add own calibration here!
       - clamp:
-          min_value: 0
-          max_value: 100000
+          min_value: -10000
+          max_value: 200000
           ignore_out_of_range: true
-```
-Don't forget to adjust the calibration values for your sensor, details can be found in the [ESPHome documentation](https://esphome.io/components/sensor/hx711.html).
 
+```
+
+## Migration notes
+
+**Migrating from a version before 2.0.0?**  
+Manual YAML configuration is no longer supported.  
+Please remove any `cat_scale` entries from your `configuration.yaml` and re-add the integration using the Home Assistant UI.
+
+For more help, see the [issue tracker](https://github.com/djbios/home-assistant-cat-scale/issues).
 
