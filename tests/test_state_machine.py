@@ -34,7 +34,7 @@ class IdleToWorking(BaseStateTransition[str, dict]):
     to_state = Working
 
     @classmethod
-    def should_change(cls, data: str, context: dict) -> bool:
+    def is_triggered(cls, data: str, context: dict) -> bool:
         CALL_COUNTER["IdleToWorking"] += 1
         return data == "go"
 
@@ -44,7 +44,7 @@ class WorkingToDone(BaseStateTransition[str, dict]):
     to_state = Done
 
     @classmethod
-    def should_change(cls, data: str, context: dict) -> bool:
+    def is_triggered(cls, data: str, context: dict) -> bool:
         CALL_COUNTER["WorkingToDone"] += 1
         return bool(context.get("ready")) and data == "finish"
 
@@ -54,7 +54,7 @@ class WorkingToIdle(BaseStateTransition[str, dict]):
     to_state = Idle
 
     @classmethod
-    def should_change(cls, data: str, context: dict) -> bool:
+    def is_triggered(cls, data: str, context: dict) -> bool:
         CALL_COUNTER["WorkingToIdle"] += 1
         return data == "reset"
 
@@ -68,7 +68,7 @@ class WorkingToDoneForced(BaseStateTransition[str, dict]):
     to_state = Done
 
     @classmethod
-    def should_change(cls, data: str, context: dict) -> bool:
+    def is_triggered(cls, data: str, context: dict) -> bool:
         CALL_COUNTER["WorkingToDoneForced"] += 1
         return data == "force"
 
@@ -169,5 +169,5 @@ def test_bad_transition_same_from_to_raises():
             to_state = Idle
 
             @classmethod
-            def should_change(cls, data: str, context: dict) -> bool:  # pragma: no cover
+            def is_triggered(cls, data: str, context: dict) -> bool:  # pragma: no cover
                 return True

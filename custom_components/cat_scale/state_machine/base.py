@@ -18,15 +18,15 @@ class BaseStateTransition(Generic[DataType, ContextType], abc.ABC):
 
     @classmethod
     @abstractmethod
-    def should_change(cls, data: DataType, context: ContextType) -> bool:  # TODO better naming
+    def is_triggered(cls, data: DataType, context: ContextType) -> bool:
         """Return True if the state should change"""
 
     @classmethod
-    def on_change(cls, data: DataType, context: ContextType):
+    def on_triggered(cls, data: DataType, context: ContextType):
         """Called when transition is triggered"""
 
     @classmethod
-    def on_stay(cls, data: DataType, context: ContextType):
+    def on_not_triggered(cls, data: DataType, context: ContextType):
         """Called when transition is checked but not triggered"""
 
     def __init_subclass__(cls, **kwargs):
@@ -55,11 +55,11 @@ class BaseStateMachine(Generic[DataType, ContextType]):
         # transitions = [t for t in possible_transitions if should_change]
         # assert, raise ???
         for transition in possible_transitions:
-            if transition.should_change(data, self.context):
+            if transition.is_triggered(data, self.context):
                 self.state = transition.to_state
-                transition.on_change(data, self.context)
+                transition.on_triggered(data, self.context)
                 return self.state
             else:
-                transition.on_stay(data, self.context)
+                transition.on_not_triggered(data, self.context)
         # how to understand if we actually hang?
         return self.state

@@ -6,15 +6,15 @@ from datetime import datetime, timedelta
 from logging import getLogger
 from typing import NamedTuple
 
-from custom_components.cat_scale.const import MINIMUM_READINGS_TO_DECIDE_NEW_BASELINE
-from custom_components.cat_scale.state_machine.base import (
+from .const import MINIMUM_READINGS_TO_DECIDE_NEW_BASELINE
+from .state_machine.base import (
     BaseState,
     BaseStateTransition,
     BaseStateMachine,
     DataType,
     ContextType,
 )
-from custom_components.cat_scale.utils import RollingMedian
+from .utils import RollingMedian
 
 logger = getLogger(__name__)
 
@@ -85,7 +85,7 @@ class LitterboxContext:
 
 class BaseLitterboxTransition(BaseStateTransition[Reading, LitterboxContext], abc.ABC):
     @classmethod
-    def on_change(cls, data: Reading, context: LitterboxContext):
+    def on_triggered(cls, data: Reading, context: LitterboxContext):
         logger.debug(
             f"Transitioning from {cls.from_state.state_key} to {cls.to_state.state_key}: time: {data.time}, weight: {data.weight}"
         )
@@ -96,13 +96,13 @@ class CatDetectedTransition(BaseLitterboxTransition):
     to_state = WaitingForConfirmationState
 
     @classmethod
-    def should_change(cls, data: Reading, context: LitterboxContext) -> bool:
+    def is_triggered(cls, data: Reading, context: LitterboxContext) -> bool:
         return data.weight > context.trigger_level
 
     @classmethod
-    def on_change(cls, data: Reading, context: LitterboxContext):
+    def on_triggered(cls, data: Reading, context: LitterboxContext):
         # Cat detected
-        super().on_change(data, context)
+        super().on_triggered(data, context)
         context.cat_arrived_datetime = data.time
         if context.recent_presence_readings:
             logger.error(
@@ -112,9 +112,9 @@ class CatDetectedTransition(BaseLitterboxTransition):
         context.recent_presence_readings.append(data.weight)
 
     @classmethod
-    def on_stay(cls, data: DataType, context: ContextType):
+    def on_not_triggered(cls, data: DataType, context: ContextType):
         # Cat was not detected
-        super().on_stay(data, context)
+        super().on_not_triggered(data, context)
         if context.recent_readings:
             median = statistics.median(r.weight for r in context.recent_readings)
             context.baseline_weight = median
@@ -128,20 +128,20 @@ class CatConfirmedTransition(BaseLitterboxTransition):
     to_state = CatPresentConfirmedState
 
     @classmethod
-    def should_change(cls, data: Reading, context: LitterboxContext) -> bool:
+    def is_triggered(cls, data: Reading, context: LitterboxContext) -> bool:
         return (
             data.weight >= context.trigger_level
             and (data.time - context.cat_arrived_datetime) >= context.min_presence_time
         )
 
     @classmethod
-    def on_change(cls, data: Reading, context: LitterboxContext):
-        super().on_change(data, context)
+    def on_triggered(cls, data: Reading, context: LitterboxContext):
+        super().on_triggered(data, context)
         context.cat_confirmed_datetime = data.time
 
     @classmethod
-    def on_stay(cls, data: DataType, context: ContextType):
-        super().on_stay(data, context)
+    def on_not_triggered(cls, data: DataType, context: ContextType):
+        super().on_not_triggered(data, context)
         context.recent_presence_readings.append(data.weight)
 
 
@@ -150,12 +150,12 @@ class CatNotConfirmed(BaseLitterboxTransition):
     to_state = IdleState
 
     @classmethod
-    def should_change(cls, data: Reading, context: LitterboxContext) -> bool:
+    def is_triggered(cls, data: Reading, context: LitterboxContext) -> bool:
         return data.weight < context.trigger_level
 
     @classmethod
-    def on_change(cls, data: Reading, context: LitterboxContext):
-        super().on_change(data, context)
+    def on_triggered(cls, data: Reading, context: LitterboxContext):
+        super().on_triggered(data, context)
         context.baseline_weight = data.weight
         context.recent_readings.clear()
         context.recent_presence_readings.clear()
@@ -166,12 +166,12 @@ class CatLeftTransition(BaseLitterboxTransition):
     to_state = AfterCatState
 
     @classmethod
-    def should_change(cls, data: Reading, context: LitterboxContext) -> bool:
+    def is_triggered(cls, data: Reading, context: LitterboxContext) -> bool:
         return data.weight < context.trigger_level
 
     @classmethod
-    def on_change(cls, data: Reading, context: LitterboxContext):
-        super().on_change(data, context)
+    def on_triggered(cls, data: Reading, context: LitterboxContext):
+        super().on_triggered(data, context)
         median_weight = context.recent_presence_readings.median or data.weight
         cat_weight = median_weight - context.baseline_weight
         if cat_weight < 0:
@@ -182,8 +182,8 @@ class CatLeftTransition(BaseLitterboxTransition):
         context.cat_weight = cat_weight
 
     @classmethod
-    def on_stay(cls, data: DataType, context: ContextType):
-        super().on_stay(data, context)
+    def on_not_triggered(cls, data: Reading, context: LitterboxContext):
+        super().on_not_triggered(data, context)
         context.recent_presence_readings.append(data.weight)
 
 
@@ -192,12 +192,12 @@ class NotACatTransition(BaseLitterboxTransition):
     to_state = IdleState
 
     @classmethod
-    def should_change(cls, data: Reading, context: LitterboxContext) -> bool:
+    def is_triggered(cls, data: Reading, context: LitterboxContext) -> bool:
         return data.time - context.cat_confirmed_datetime > context.leave_timeout
 
     @classmethod
-    def on_change(cls, data: Reading, context: LitterboxContext):
-        super().on_change(data, context)
+    def on_triggered(cls, data: Reading, context: LitterboxContext):
+        super().on_triggered(data, context)
         context.baseline_weight = data.weight
         context.recent_readings.clear()
         context.recent_presence_readings.clear()
@@ -208,7 +208,7 @@ class BaselineNormalizedTransition(BaseLitterboxTransition):
     to_state = IdleState
 
     @classmethod
-    def should_change(cls, data: Reading, context: LitterboxContext) -> bool:
+    def is_triggered(cls, data: Reading, context: LitterboxContext) -> bool:
         stand_dev = statistics.stdev(r.weight for r in context.recent_readings)
         return (
             stand_dev <= context.after_cat_standard_deviation
@@ -216,7 +216,7 @@ class BaselineNormalizedTransition(BaseLitterboxTransition):
         )
 
     @classmethod
-    def on_change(cls, data: Reading, context: LitterboxContext):
+    def on_triggered(cls, data: Reading, context: LitterboxContext):
         context.waste_weight = max(data.weight - context.baseline_weight, 0)
         context.baseline_weight = data.weight
         context.recent_readings.clear()
