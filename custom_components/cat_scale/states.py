@@ -95,7 +95,7 @@ class CatDetectedTransition(BaseLitterboxTransition):
 
     @classmethod
     def is_triggered(cls, data: Reading, context: LitterboxContext) -> bool:
-        return data.weight > context.trigger_level
+        return context.trigger_level is not None and data.weight > context.trigger_level
 
     @classmethod
     def on_triggered(cls, data: Reading, context: LitterboxContext):
@@ -127,6 +127,10 @@ class CatConfirmedTransition(BaseLitterboxTransition):
 
     @classmethod
     def is_triggered(cls, data: Reading, context: LitterboxContext) -> bool:
+        assert context.trigger_level, "baseline should be set in previous state"
+        assert context.cat_arrived_datetime is not None, (
+            "cat_arrived_datetime should be set in previous state"
+        )
         return (
             data.weight >= context.trigger_level
             and (data.time - context.cat_arrived_datetime) >= context.min_presence_time
@@ -149,6 +153,7 @@ class CatNotConfirmed(BaseLitterboxTransition):
 
     @classmethod
     def is_triggered(cls, data: Reading, context: LitterboxContext) -> bool:
+        assert context.trigger_level is not None, "baseline should be set in previous state"
         return data.weight < context.trigger_level
 
     @classmethod
@@ -165,10 +170,14 @@ class CatLeftTransition(BaseLitterboxTransition):
 
     @classmethod
     def is_triggered(cls, data: Reading, context: LitterboxContext) -> bool:
+        assert context.trigger_level is not None, "baseline should be set in previous state"
         return data.weight < context.trigger_level
 
     @classmethod
     def on_triggered(cls, data: Reading, context: LitterboxContext):
+        assert context.baseline_weight is not None, (
+            "baseline_weight should be set in previous state"
+        )
         super().on_triggered(data, context)
         median_weight = context.recent_presence_readings.median or data.weight
         cat_weight = median_weight - context.baseline_weight
@@ -191,6 +200,9 @@ class NotACatTransition(BaseLitterboxTransition):
 
     @classmethod
     def is_triggered(cls, data: Reading, context: LitterboxContext) -> bool:
+        assert context.cat_confirmed_datetime is not None, (
+            "cat_confirmed_datetime should be set in previous state"
+        )
         return data.time - context.cat_confirmed_datetime > context.leave_timeout
 
     @classmethod
@@ -215,6 +227,10 @@ class BaselineNormalizedTransition(BaseLitterboxTransition):
 
     @classmethod
     def on_triggered(cls, data: Reading, context: LitterboxContext):
+        super().on_triggered(data, context)
+        assert context.baseline_weight is not None, (
+            "baseline_weight should be set in previous state"
+        )
         context.waste_weight = max(data.weight - context.baseline_weight, 0.0)
         context.baseline_weight = data.weight
         context.recent_readings.clear()

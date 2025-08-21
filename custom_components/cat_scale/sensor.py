@@ -30,7 +30,7 @@ from .const import (
 )
 from .states import LitterboxStateMachine, IdleState, LitterboxContext, Reading
 
-_LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
@@ -136,11 +136,8 @@ class CatWeightMainSensor(RestoreSensor):
     async def async_added_to_hass(self):
         """When entity is added to hass, set up state listener on the source sensor."""
         await super().async_added_to_hass()
-        _LOGGER.debug(
-            "Adding %s to hass. Subscribing to source sensor: %s",
-            self._name,
-            self._source_entity,
-        )
+        msg = f"Adding {self._name} to hass. Subscribing to source sensor: {self._source_entity}"
+        logger.debug(msg)
 
         # Restore previous native value if available
         if (last_sensor_data := await self.async_get_last_sensor_data()) is not None:
@@ -148,15 +145,11 @@ class CatWeightMainSensor(RestoreSensor):
                 self.state_machine.force_set_cat_weight(
                     float(last_sensor_data.native_value)
                 )  # TODO maybe worth it to have sensor state still
-                _LOGGER.debug(
-                    "%s: Restored native_value to %.2f", self._name, self.state_machine.cat_weight
-                )
+                msg = f"{self._name}: Restored native_value to {self.state_machine.cat_weight:.2f}"
+                logger.debug(msg)  # TODO maybe worth it to have sensor state still
             except (ValueError, TypeError):
-                _LOGGER.debug(
-                    "%s: Could not restore native_value from %s",
-                    self._name,
-                    last_sensor_data.native_value,
-                )
+                msg = f"{self._name}: Could not restore native_value from {last_sensor_data.native_value}"
+                logger.debug(msg)
 
         self._unsub_listener = async_track_state_change_event(
             self._hass, [self._source_entity], self._handle_source_sensor_state_event
@@ -164,7 +157,8 @@ class CatWeightMainSensor(RestoreSensor):
 
     async def async_will_remove_from_hass(self):
         """Clean up when entity is removed."""
-        _LOGGER.debug("Removing %s from hass and unsubscribing", self._name)
+        msg = f"Removing {self._name} from hass and unsubscribing"
+        logger.debug(msg)
         if self._unsub_listener:
             self._unsub_listener()
             self._unsub_listener = None
@@ -174,27 +168,27 @@ class CatWeightMainSensor(RestoreSensor):
         """Handle state changes of the source sensor."""
         new_state = event.data.get("new_state")
         if not new_state:
-            _LOGGER.debug("%s: No new_state in event", self._name)
+            msg = f"{self._name}: No new_state in event"
+            logger.debug(msg)
             return
 
         if new_state.state in [STATE_UNKNOWN, STATE_UNAVAILABLE]:
-            _LOGGER.debug(
-                "%s: State is unknown/unavailable (%s) Ignoring",
-                self._name,
-                new_state.state,
-            )
+            msg = f"{self._name}: State is unknown/unavailable ({new_state.state}) Ignoring"
+            logger.debug(msg)
             return
 
         try:
             weight = float(new_state.state)
         except ValueError:
-            _LOGGER.debug("%s: State (%s) is non-numeric. Ignoring", self._name, new_state.state)
+            msg = f"{self._name}: State ({new_state.state}) is non-numeric. Ignoring"
+            logger.debug(msg)
             return
 
         # Use last_changed if available; else fallback to event.time_fired
         event_time = new_state.last_changed or event.time_fired
 
-        _LOGGER.debug("%s: New weight=%.2f at %s", self._name, weight, event_time)
+        msg = f"{self._name}: New weight={weight:.2f} at {event_time}"
+        logger.debug(msg)
 
         # Add the reading to our records
         reading = Reading(event_time, weight)
