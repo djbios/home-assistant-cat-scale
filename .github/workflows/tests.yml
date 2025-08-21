@@ -27,6 +27,10 @@ jobs:
         run: |
           pre-commit run --all-files --show-diff-on-failure --color=always
 
+      - name: Run mypy
+        run: |
+          mypy ./
+
       - name: Run tests
         run: |
           pytest 
