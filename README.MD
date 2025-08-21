@@ -125,8 +125,8 @@ wifi:
 sensor:
   - platform: hx711
     name: "Cat Weight Sensor"
-    dout_pin: GPIO32
-    clk_pin: GPIO26
+    dout_pin: GPIO01
+    clk_pin: GPIO02
 
     gain: 128
     update_interval: 1s
