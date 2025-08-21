@@ -15,7 +15,7 @@ class RollingMedian:
             return (-self.low[0] + self.high[0]) / 2
         return float(-self.low[0])  # low has one extra
 
-    def append(self, x):
+    def append(self, x: float):
         self.count += 1
         if not self.low or x <= -self.low[0]:
             heapq.heappush(self.low, -x)

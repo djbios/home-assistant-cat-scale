@@ -47,8 +47,11 @@ class BaseStateMachine(Generic[DataType, ContextType]):
         self.context = initial_context
 
     @classmethod
-    def get_all_states(cls) -> set[type[BaseState]]:
-        return {state for t in cls.transitions for state in (t.to_state, t.from_state)}
+    def get_all_states(cls) -> list[type[BaseState]]:
+        return sorted(
+            {state for t in cls.transitions for state in (t.to_state, t.from_state)},
+            key=lambda s: s.state_key,
+        )
 
     def process_data(self, data: DataType) -> type[BaseState]:
         possible_transitions = [t for t in self.transitions if t.from_state == self.state]

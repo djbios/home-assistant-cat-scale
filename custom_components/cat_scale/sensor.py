@@ -55,7 +55,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     )
 
     # Create the main and sub sensors as before
-    main_sensor = CatLitterDetectionSensor(
+    main_sensor = CatWeightMainSensor(
         hass=hass,
         name=entry.title,
         source_entity=source_sensor,
@@ -75,7 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     async_add_entities([main_sensor, baseline_sensor, detection_state_sensor, waste_sensor])
 
 
-class CatLitterDetectionSensor(RestoreSensor):
+class CatWeightMainSensor(RestoreSensor):
     """Main sensor that detects the presence of a cat on a litter scale
     and computes the cat's weight as (peak_weight - baseline_weight).
 
@@ -86,6 +86,11 @@ class CatLitterDetectionSensor(RestoreSensor):
     _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.WEIGHT
     _attr_translation_key = "cat_weight"
+
+    icon = "mdi:cat"
+    should_poll = False
+    state_class = SensorStateClass.MEASUREMENT
+    native_unit_of_measurement = UnitOfMass.GRAMS
 
     def __init__(
         self,
@@ -117,7 +122,7 @@ class CatLitterDetectionSensor(RestoreSensor):
         self._unsub_listener = None
 
         # Sub-sensors for baseline, detection state, waste, etc.
-        self._sub_sensors = []
+        self._sub_sensors: list[SensorEntity] = []
 
     def register_sub_sensor(self, sensor_entity: SensorEntity):
         """Register a sub-sensor so we can update it after our own state changes."""
@@ -237,49 +242,7 @@ class CatLitterDetectionSensor(RestoreSensor):
     @property
     def native_value(self) -> float | None:
         """Return the state of the entity."""
-        # Using native value and native unit of measurement, allows you to change units
-        # in Lovelace and HA will automatically calculate the correct value.
         return self.state_machine.cat_weight
-
-    @property
-    def native_unit_of_measurement(self) -> str:
-        """Return unit of mass."""
-        return UnitOfMass.GRAMS
-
-    @property
-    def state_class(self) -> str | None:
-        """Return state class.
-
-        This value is set to MEASUREMENT so it persists value over longer
-        time.
-        """
-        # https://developers.home-assistant.io/docs/core/entity/sensor/#available-state-classes
-        return SensorStateClass.MEASUREMENT
-
-    @property
-    def icon(self):
-        """Return a suitable icon for the main sensor."""
-        return "mdi:cat"
-
-    @property
-    def baseline_weight(self) -> float | None:
-        """Expose the baseline weight for sub-sensors to use."""
-        return self.state_machine.baseline_weight
-
-    @property
-    def detection_state(self) -> str:
-        """Expose the internal detection state for sub-sensors to use."""
-        return self.state_machine.state.state_key
-
-    @property
-    def waste_weight(self) -> float:
-        """Return the difference in baseline before cat arrived vs. after cat left."""
-        return self.state_machine.waste_weight
-
-    @property
-    def should_poll(self) -> bool:
-        """Event-driven; no polling."""
-        return False
 
 
 class CatLitterBaselineSensor(SensorEntity):
@@ -292,7 +255,7 @@ class CatLitterBaselineSensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.WEIGHT
     _attr_translation_key = "baseline"
 
-    def __init__(self, main_sensor: CatLitterDetectionSensor) -> None:
+    def __init__(self, main_sensor: CatWeightMainSensor) -> None:
         """Initialize the baseline sensor."""
         self._main_sensor = main_sensor
         self._attr_unique_id = f"{main_sensor.unique_id}_baseline_sensor"
@@ -300,9 +263,10 @@ class CatLitterBaselineSensor(SensorEntity):
     @property
     def native_value(self) -> float | None:
         """Return the state of the entity."""
-        if self._main_sensor.baseline_weight is None:
-            return 0
-        return round(self._main_sensor.baseline_weight, 2)
+        baseline_weight = self._main_sensor.state_machine.baseline_weight
+        if baseline_weight is None:
+            return 0.0
+        return round(baseline_weight, 2)
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -333,7 +297,10 @@ class CatLitterDetectionStateSensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = [s.state_key for s in LitterboxStateMachine.get_all_states()]
 
-    def __init__(self, main_sensor: CatLitterDetectionSensor) -> None:
+    icon = "mdi:radar"
+    should_poll = False
+
+    def __init__(self, main_sensor: CatWeightMainSensor) -> None:
         """Initialize the detection-state sensor."""
         self._main_sensor = main_sensor
         self._attr_unique_id = f"{main_sensor.unique_id}_cat_detection_state"
@@ -341,17 +308,7 @@ class CatLitterDetectionStateSensor(SensorEntity):
     @property
     def native_value(self) -> str:
         """Return the internal detection state from the main sensor."""
-        return self._main_sensor.detection_state
-
-    @property
-    def icon(self):
-        """Return an icon for the detection state sensor."""
-        return "mdi:radar"
-
-    @property
-    def should_poll(self) -> bool:
-        """No need to poll—this updates when the main sensor updates."""
-        return False
+        return self._main_sensor.state_machine.state.state_key
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -369,7 +326,10 @@ class CatLitterWasteSensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.WEIGHT
     _attr_translation_key = "waste_weight"
 
-    def __init__(self, main_sensor: CatLitterDetectionSensor) -> None:
+    icon = "mdi:delete-variant"
+    should_poll = False
+
+    def __init__(self, main_sensor: CatWeightMainSensor) -> None:
         """Initialize the waste sensor."""
         self._main_sensor = main_sensor
         self._attr_unique_id = f"{main_sensor.unique_id}_waste"
@@ -377,23 +337,15 @@ class CatLitterWasteSensor(SensorEntity):
     @property
     def native_value(self) -> float | None:
         """Return the state of the entity."""
-        if self._main_sensor.waste_weight is None:
-            return 0
-        return round(self._main_sensor.waste_weight, 2)
+        waste_weight = self._main_sensor.state_machine.waste_weight
+        if waste_weight is None:
+            return 0.0
+        return round(self._main_sensor.state_machine.waste_weight, 2)
 
     @property
     def native_unit_of_measurement(self) -> str:
         """Return unit of mass."""
         return UnitOfMass.GRAMS
-
-    @property
-    def icon(self):
-        return "mdi:delete-variant"
-
-    @property
-    def should_poll(self) -> bool:
-        """No polling; event-driven from main sensor."""
-        return False
 
     @property
     def device_info(self) -> DeviceInfo:

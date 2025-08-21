@@ -11,8 +11,6 @@ from .state_machine.base import (
     BaseState,
     BaseStateTransition,
     BaseStateMachine,
-    DataType,
-    ContextType,
 )
 from .utils import RollingMedian
 
@@ -112,14 +110,14 @@ class CatDetectedTransition(BaseLitterboxTransition):
         context.recent_presence_readings.append(data.weight)
 
     @classmethod
-    def on_not_triggered(cls, data: DataType, context: ContextType):
+    def on_not_triggered(cls, data: Reading, context: LitterboxContext):
         # Cat was not detected
         super().on_not_triggered(data, context)
         if context.recent_readings:
             median = statistics.median(r.weight for r in context.recent_readings)
             context.baseline_weight = median
             logger.debug(
-                f"{context.name}: Updated baseline to average of recent: {context.baseline_weight:.2f}",
+                f"{context.name}: Updated baseline to median of recent: {context.baseline_weight:.2f}",
             )
 
 
@@ -140,7 +138,7 @@ class CatConfirmedTransition(BaseLitterboxTransition):
         context.cat_confirmed_datetime = data.time
 
     @classmethod
-    def on_not_triggered(cls, data: DataType, context: ContextType):
+    def on_not_triggered(cls, data: Reading, context: LitterboxContext):
         super().on_not_triggered(data, context)
         context.recent_presence_readings.append(data.weight)
 
@@ -178,7 +176,7 @@ class CatLeftTransition(BaseLitterboxTransition):
             logger.warning(
                 f"{context.name}: Negative cat weight {cat_weight:.2f} detected. Possibly sensor drift/noise"
             )
-            cat_weight = 0
+            cat_weight = 0.0
         context.cat_weight = cat_weight
 
     @classmethod
@@ -217,7 +215,7 @@ class BaselineNormalizedTransition(BaseLitterboxTransition):
 
     @classmethod
     def on_triggered(cls, data: Reading, context: LitterboxContext):
-        context.waste_weight = max(data.weight - context.baseline_weight, 0)
+        context.waste_weight = max(data.weight - context.baseline_weight, 0.0)
         context.baseline_weight = data.weight
         context.recent_readings.clear()
 

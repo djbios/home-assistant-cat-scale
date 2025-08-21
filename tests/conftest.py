@@ -4,7 +4,7 @@ from syrupy.assertion import SnapshotAssertion
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.cat_scale.sensor import CatLitterDetectionSensor
+from custom_components.cat_scale.sensor import CatWeightMainSensor
 
 from custom_components.cat_scale.const import (
     DOMAIN,
@@ -89,7 +89,7 @@ def make_sensor(hass):
         leave_time=30,
         after_cat_standard_deviation=50,
     ):
-        sensor = CatLitterDetectionSensor(
+        sensor = CatWeightMainSensor(
             hass=hass,
             name=name,
             source_entity="sensor.test_scale",

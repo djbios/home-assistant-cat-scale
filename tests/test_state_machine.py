@@ -151,7 +151,7 @@ def test_multiple_steps_flow():
 
 def test_get_all_states_returns_all_configured_states():
     states = TestMachine.get_all_states()
-    assert states == {Idle, Working, Done}
+    assert set(states) == {Idle, Working, Done}
 
 
 def test_process_data_returns_current_state_when_no_change():
