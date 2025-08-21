@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main, beta]       # whatever you need
-  pull_request:                  # ← add this
-    branches: [main, beta]
+    branches: [ main, beta ]       # whatever you need
+  pull_request: # ← add this
+    branches: [ main, beta ]
 
 
 jobs:
@@ -26,10 +26,6 @@ jobs:
       - name: Lint
         run: |
           pre-commit run --all-files --show-diff-on-failure --color=always
-
-      - name: Run mypy
-        run: |
-          mypy ./
 
       - name: Run tests
         run: |

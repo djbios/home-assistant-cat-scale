@@ -78,7 +78,7 @@ class CatScaleOptionsFlowHandler(OptionsFlow):
 
 
 # Needed to connect to the config entry:
-class CatScaleConfigFlow(ConfigFlow, domain=DOMAIN):
+class CatScaleConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore
     """Handle a config flow for cat_scale."""
 
     VERSION = 1

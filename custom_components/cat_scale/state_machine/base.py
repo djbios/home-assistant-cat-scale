@@ -2,6 +2,8 @@ import abc
 from abc import abstractmethod
 from typing import ClassVar, TypeVar, Generic
 
+from ..utils import StaticABCMeta
+
 DataType = TypeVar("DataType")
 ContextType = TypeVar("ContextType")
 
@@ -10,8 +12,7 @@ class BaseState:
     state_key: ClassVar[str] = NotImplemented
 
 
-# TODO static meta
-class BaseStateTransition(Generic[DataType, ContextType], abc.ABC):
+class BaseStateTransition(Generic[DataType, ContextType], abc.ABC, metaclass=StaticABCMeta):
     # state and next_state?
     from_state: ClassVar[type[BaseState]] = NotImplemented
     to_state: ClassVar[type[BaseState]] = NotImplemented

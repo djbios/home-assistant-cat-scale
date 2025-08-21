@@ -146,7 +146,7 @@ class CatWeightMainSensor(RestoreSensor):
                     float(last_sensor_data.native_value)
                 )  # TODO maybe worth it to have sensor state still
                 msg = f"{self._name}: Restored native_value to {self.state_machine.cat_weight:.2f}"
-                logger.debug(msg)  # TODO maybe worth it to have sensor state still
+                logger.debug(msg)
             except (ValueError, TypeError):
                 msg = f"{self._name}: Could not restore native_value from {last_sensor_data.native_value}"
                 logger.debug(msg)
