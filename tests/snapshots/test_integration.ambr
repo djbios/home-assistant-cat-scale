@@ -29,7 +29,7 @@
     'last_changed': <ANY>,
     'last_reported': <ANY>,
     'last_updated': <ANY>,
-    'state': '0',
+    'state': '0.0',
   })
 # ---
 # name: test_entities_registered_and_available.2
@@ -39,10 +39,10 @@
       'friendly_name': 'Cat weight Detection state',
       'icon': 'mdi:radar',
       'options': list([
+        'after_cat',
+        'cat_present',
         'idle',
         'waiting_for_confirmation',
-        'cat_present',
-        'after_cat',
       ]),
     }),
     'context': <ANY>,
