@@ -50,7 +50,12 @@ class StaticClassMetaclass(type):
     """
 
     # Methods Python treats as class-level implicitly (no decorator needed)
-    _IMPLICIT_CLASS_LEVEL = {"__init_subclass__", "__class_getitem__", "__subclasshook__"}
+    _IMPLICIT_CLASS_LEVEL = {
+        "__init_subclass__",
+        "__class_getitem__",
+        "__subclasshook__",
+        "__annotate_func__",
+    }
 
     def __new__(mcls, name: str, bases: tuple[type, ...], namespace: dict[str, Any], **kwargs: Any):
         # Forbid defining instance constructor hooks — they imply instantiation.
