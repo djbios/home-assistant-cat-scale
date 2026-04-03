@@ -234,6 +234,7 @@ class BaselineNormalizedTransition(BaseLitterboxTransition):
         context.waste_weight = max(data.weight - context.baseline_weight, 0.0)
         context.baseline_weight = data.weight
         context.recent_readings.clear()
+        context.recent_presence_readings.clear()
 
 
 class LitterboxStateMachine(BaseStateMachine[Reading, LitterboxContext]):
