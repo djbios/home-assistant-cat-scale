@@ -182,6 +182,7 @@ async def test_cat_come_left_same_baseline(make_sensor):
     assert sensor.state_machine.waste_weight == pytest.approx(0.0, 0.01), (
         "Waste should be 0 if baseline didn't shift"
     )
+    assert not sensor.state_machine.context.recent_presence_readings
 
 
 async def test_baseline_change_down(make_sensor, hass):
