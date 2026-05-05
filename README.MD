@@ -16,7 +16,7 @@ This will allow you to monitor your cat's health and be alerted to any potential
 ### How to build hardware
 I made a video showing how I built the hardware part of this project for myself, including the scale setup and wiring.
 
-[![DIY cat scale build video](https://img.youtube.com/vi/MB3Wi4j7Yu4/maxresdefault.jpg)](https://www.youtube.com/watch?v=MB3Wi4j7Yu4)
+[![DIY cat scale build video](https://pic.djbios.org/6mouej.png)](https://www.youtube.com/watch?v=MB3Wi4j7Yu4)
 
 ## Installation
 
