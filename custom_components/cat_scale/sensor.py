@@ -223,7 +223,6 @@ class CatWeightMainSensor(RestoreSensor):
                         hw_version=device.hw_version,
                         serial_number=device.serial_number,
                         configuration_url=device.configuration_url,
-                        suggested_area=device.suggested_area,
                         entry_type=device.entry_type,
                     )
         return DeviceInfo(
