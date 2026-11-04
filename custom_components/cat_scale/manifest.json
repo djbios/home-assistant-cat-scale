@@ -1,6 +1,7 @@
 {
   "domain": "cat_scale",
   "name": "Cat weight tracker",
+  "categories": ["pets"],
   "codeowners": ["@djbios"],
   "config_flow": true,
   "dependencies": [],
@@ -12,4 +13,3 @@
   "requirements": [],
   "version": "2.2.1"
 }
-
